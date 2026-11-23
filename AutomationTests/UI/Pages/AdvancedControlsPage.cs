@@ -2,7 +2,7 @@ using AutomationFramework.UI;
 using AutomationTests.Configuration;
 using OpenQA.Selenium;
 
-namespace AutomationTests.Pages;
+namespace AutomationTests.UI.Pages;
 
 public sealed class AdvancedControlsPage(IWebDriver driver)
 {

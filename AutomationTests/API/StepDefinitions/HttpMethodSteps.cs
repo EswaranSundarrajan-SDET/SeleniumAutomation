@@ -6,7 +6,7 @@ using Reqnroll;
 using RestSharp;
 using RestSharp.Interceptors;
 
-namespace ApiAutomation.StepDefinitions;
+namespace AutomationTests.API.StepDefinitions;
 
 [Binding]
 public sealed class HttpMethodSteps

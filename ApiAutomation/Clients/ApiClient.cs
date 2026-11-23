@@ -15,7 +15,7 @@ public sealed class ApiClient : IDisposable
         });
     }
 
-    internal ApiClient(Uri baseUri, HttpMessageHandler handler)
+    public ApiClient(Uri baseUri, HttpMessageHandler handler)
     {
         client = new RestClient(handler, configureRestClient: options =>
         {

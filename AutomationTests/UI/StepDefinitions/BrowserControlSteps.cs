@@ -1,10 +1,10 @@
 using AutomationFramework.UI;
 using AutomationTests.Hooks;
-using AutomationTests.Pages;
+using AutomationTests.UI.Pages;
 using NUnit.Framework;
 using Reqnroll;
 
-namespace AutomationTests.StepDefinitions;
+namespace AutomationTests.UI.StepDefinitions;
 
 [Binding]
 public sealed class BrowserControlSteps(ScenarioSession session)
@@ -109,7 +109,7 @@ public sealed class BrowserControlSteps(ScenarioSession session)
     public void OpenUpload() => Page.Open("upload");
     [When("I upload the sample text file")]
     public void UploadFile() =>
-        Page.UploadFile(Path.Combine(AppContext.BaseDirectory, "TestData", "upload-example.txt"));
+        Page.UploadFile(Path.Combine(AppContext.BaseDirectory, "UI", "TestData", "upload-example.txt"));
     [Then("the upload confirmation shows {string}")]
     public void VerifyUpload(string expected) => Assert.That(Page.UploadedFile, Is.EqualTo(expected));
 

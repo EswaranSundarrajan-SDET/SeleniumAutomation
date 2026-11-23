@@ -10,7 +10,7 @@ public static class TestSettings
 
     public static TestData LoadData()
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "TestData", "testdata.json");
+        var path = Path.Combine(AppContext.BaseDirectory, "UI", "TestData", "testdata.json");
         return JsonSerializer.Deserialize<TestData>(File.ReadAllText(path))
             ?? throw new InvalidDataException($"Missing test data in {path}");
     }

@@ -1,10 +1,10 @@
 using AutomationTests.Hooks;
-using AutomationTests.Pages;
+using AutomationTests.UI.Pages;
 using AutomationTests.Configuration;
 using NUnit.Framework;
 using Reqnroll;
 
-namespace AutomationTests.StepDefinitions;
+namespace AutomationTests.UI.StepDefinitions;
 
 [Binding]
 public class LoginSteps(ScenarioSession session)

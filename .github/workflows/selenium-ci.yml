@@ -21,7 +21,7 @@ jobs:
     env:
       BROWSER: ${{ matrix.browser }}
       HEADLESS: 'true'
-      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports
+      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports/${{ matrix.browser }}
       SOLUTION: SeleniumAutomation.sln
       TEST_PROJECT: AutomationTests/AutomationTests.csproj
     steps:
@@ -35,7 +35,7 @@ jobs:
         run: dotnet build "$SOLUTION" -c Release --no-restore
       - name: Run scenarios
         id: scenarios
-        run: dotnet test "$TEST_PROJECT" -c Release --no-build --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
+        run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
       - name: Verify scenario discovery
         run: |
           python3 - <<'PY'
@@ -55,7 +55,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: selenium-${{ matrix.browser }}
-          path: AutomationTests/Reports/
+          path: ${{ env.REPORTS_DIR }}/
           if-no-files-found: warn
 
   api-tests:
@@ -63,8 +63,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      REPORTS_DIR: ${{ github.workspace }}/ApiAutomation/Reports
-      API_PROJECT: ApiAutomation/ApiAutomation.csproj
+      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports/API
+      TEST_PROJECT: AutomationTests/AutomationTests.csproj
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -72,7 +72,7 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Run API scenarios
         id: api-scenarios
-        run: dotnet test "$API_PROJECT" -c Release --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
+        run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=http" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
       - name: Verify API scenario discovery
         run: |
           python3 - <<'PY'
@@ -92,5 +92,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: restsharp-api
-          path: ApiAutomation/Reports/
+          path: ${{ env.REPORTS_DIR }}/
           if-no-files-found: warn

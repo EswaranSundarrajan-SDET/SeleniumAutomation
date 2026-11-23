@@ -1,9 +1,9 @@
 using AutomationTests.Hooks;
-using AutomationTests.Pages;
+using AutomationTests.UI.Pages;
 using NUnit.Framework;
 using Reqnroll;
 
-namespace AutomationTests.StepDefinitions;
+namespace AutomationTests.UI.StepDefinitions;
 
 [Binding]
 public sealed class AdvancedControlsSteps(ScenarioSession session)

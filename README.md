@@ -16,11 +16,11 @@ The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, and Ext
 | Project | Contents |
 | --- | --- |
 | `AutomationFramework` | Reusable Selenium class library with driver creation, browser configuration, waits, and UI helpers |
-| `AutomationTests` | Browser features, steps, page objects, hooks, and data |
-| `ApiAutomation` | RestSharp client, API features and steps, HTTP transport checks, and API reporting hooks |
+| `AutomationTests` | UI and API scenarios under `UI/` and `API/`, with shared Reqnroll hooks in `Hooks/` |
+| `ApiAutomation` | RestSharp client library |
 | `AutomationReporting` | Extent HTML reporting shared by the UI and API projects |
 
-`AutomationTests` references `AutomationFramework` and owns the configuration and locators for The Internet.
+`AutomationTests` references `AutomationFramework` for Selenium, `ApiAutomation` for RestSharp, and `AutomationReporting` for Extent HTML reporting.
 
 ## Run locally
 
@@ -30,9 +30,14 @@ Install the .NET 8 SDK and Chrome or Firefox. Run from the repository root.
 dotnet test SeleniumAutomation.sln
 ```
 
-Run just the API tests with `dotnet test ApiAutomation/ApiAutomation.csproj` or just the browser tests with `dotnet test AutomationTests/AutomationTests.csproj`.
+Run one suite with its NUnit category filter.
 
-Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` or `ApiAutomation/Reports/ExtentReport.html` after the run. Reports include scenario outcomes and executed steps. The browser report embeds screenshots on failure. To watch the UI scenarios in Firefox and write reports to the Reports folder, run these commands from the repository root.
+```powershell
+dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=http"
+dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui"
+```
+
+Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` after the run. A full run includes both suites in the same report. Reports include scenario outcomes and executed steps. The browser report embeds screenshots on failure. To watch the UI scenarios in Firefox and write reports to the Reports folder, run these commands from the repository root.
 
 ```powershell
 $env:BROWSER = "firefox"
@@ -45,11 +50,11 @@ The first restore requires NuGet access. Selenium Manager can download a matchin
 
 ## Extend the suite
 
-In `AutomationTests`, add scenarios in `Features`, bind their steps in `StepDefinitions`, and keep locators and browser actions in `Pages`. The `@ui` tag enables the scenario-scoped browser, cleanup, and screenshot hooks. The site URL lives in `AutomationTests/Configuration/TestSettings.cs`, and the public login credentials are in `AutomationTests/TestData/testdata.json`.
+UI features, steps, page objects, and input data live under `AutomationTests/UI`. API features and steps live under `AutomationTests/API`. Both suites use `AutomationTests/Hooks/TestHooks.cs` for reporting. The `@ui` tag enables scenario-scoped browser startup, and screenshots are captured when a browser scenario fails. Shared test configuration lives in `AutomationTests/Configuration/TestSettings.cs`.
 
 ## API tests
 
-The RestSharp client in `ApiAutomation/Clients/ApiClient.cs` executes requests built with `RestRequest`. The live requests check HTTP status, query encoding, echoed JSON, HEAD metadata, and OPTIONS preflight headers. HTTPBingo echoes synthetic data. For TRACE and CONNECT, a RestSharp interceptor sets the verb before an in-process handler records it. These cases check request construction without opening a network connection or establishing a tunnel. Run the transport cases alone with `dotnet test ApiAutomation/ApiAutomation.csproj --filter "TestCategory=transport"`.
+The RestSharp client in `ApiAutomation/Clients/ApiClient.cs` executes requests built with `RestRequest`. The live requests check HTTP status, query encoding, echoed JSON, HEAD metadata, and OPTIONS preflight headers. HTTPBingo echoes synthetic data. For TRACE and CONNECT, a RestSharp interceptor sets the verb before an in-process handler records it. These cases check request construction without opening a network connection or establishing a tunnel. Run the transport cases alone with `dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=transport"`.
 
 ## UI helpers
 
@@ -73,4 +78,4 @@ For a native dropdown, use `SelectByText`, `SelectByValue`, or `SelectByIndex`. 
 
 ## GitHub Actions
 
-Selenium CI runs on pull requests, pushes to main, and manual dispatch. The Chrome and Firefox jobs build the solution, run the test project, and publish `ExtentReport.html`, TRX results, and any failure screenshots in the `selenium-chrome` and `selenium-firefox` artifacts. The RestSharp job runs independently and publishes an HTML report and TRX results in the `restsharp-api` artifact.
+Selenium CI runs on pull requests, pushes to main, and manual dispatch. The Chrome and Firefox jobs build the solution, run the test project, and publish `ExtentReport.html`, TRX results, and any failure screenshots in the `selenium-chrome` and `selenium-firefox` artifacts. The RestSharp job selects the API scenarios from the same test project and publishes an HTML report and TRX results in the `restsharp-api` artifact.

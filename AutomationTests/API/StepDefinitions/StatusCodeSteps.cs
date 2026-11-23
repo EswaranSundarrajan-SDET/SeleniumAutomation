@@ -1,14 +1,15 @@
 using ApiAutomation.Clients;
+using AutomationTests.Configuration;
 using NUnit.Framework;
 using Reqnroll;
 using RestSharp;
 
-namespace ApiAutomation.StepDefinitions;
+namespace AutomationTests.API.StepDefinitions;
 
 [Binding]
 public class StatusCodeSteps
 {
-    private static readonly ApiClient Api = new(new Uri("https://the-internet.herokuapp.com/"));
+    private static readonly ApiClient Api = new(TestSettings.BaseUri);
     private RestResponse response = null!;
 
     [When("I request the status code example for {int}")]

@@ -4,6 +4,4 @@
 **/*.feature.cs
 AutomationTests/Reports/*
 !AutomationTests/Reports/.gitkeep
-ApiAutomation/Reports/*
-!ApiAutomation/Reports/.gitkeep
 .vs/
