@@ -18,6 +18,8 @@ public sealed class BrowserActions(IWebDriver driver)
         WaitHelper.Create(driver).Until(d => matches(d.Url));
 
     public void SwitchToFrame(By locator) => driver.SwitchTo().Frame(WaitHelper.Present(driver, locator));
+    public void SwitchToFrame(string nameOrId) => driver.SwitchTo().Frame(nameOrId);
+    public void SwitchToFrame(int index) => driver.SwitchTo().Frame(index);
     public void SwitchToParentFrame() => driver.SwitchTo().ParentFrame();
     public void SwitchToMainDocument() => driver.SwitchTo().DefaultContent();
 
@@ -47,8 +49,29 @@ public sealed class BrowserActions(IWebDriver driver)
     public object? ExecuteScript(string script, params object[] arguments) =>
         ((IJavaScriptExecutor)driver).ExecuteScript(script, arguments);
 
+    public object? ExecuteAsyncScript(string script, params object[] arguments) =>
+        ((IJavaScriptExecutor)driver).ExecuteAsyncScript(script, arguments);
+
+    public ICookieJar Cookies => driver.Manage().Cookies;
+
     public void ScrollIntoView(By locator) =>
         ExecuteScript("arguments[0].scrollIntoView({block: 'center'});", WaitHelper.Present(driver, locator));
+
+    // Dispatch DOM drag events when testing an HTML5 drop handler across browsers.
+    public void DragHtml5(By source, By target)
+    {
+        ExecuteScript("""
+            const source = arguments[0], target = arguments[1];
+            const dataTransfer = new DataTransfer();
+            const send = (element, type) => element.dispatchEvent(new DragEvent(type, {
+                bubbles: true, cancelable: true, dataTransfer
+            }));
+            send(source, 'dragstart');
+            send(target, 'dragenter');
+            if (!send(target, 'dragover')) send(target, 'drop');
+            send(source, 'dragend');
+            """, WaitHelper.Visible(driver, source), WaitHelper.Visible(driver, target));
+    }
 
     public Screenshot CaptureScreenshot() => ((ITakesScreenshot)driver).GetScreenshot();
 

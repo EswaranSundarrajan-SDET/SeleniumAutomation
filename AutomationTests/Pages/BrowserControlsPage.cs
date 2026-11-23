@@ -60,21 +60,7 @@ public sealed class BrowserControlsPage(IWebDriver driver)
     }
     public string SliderValue => elements.Text(By.Id("range"));
 
-    public void DragFirstColumn()
-    {
-        var source = elements.FindVisible(By.Id("column-a"));
-        var target = elements.FindVisible(By.Id("column-b"));
-        var eventDelay = TimeSpan.FromMilliseconds(150);
-        // HTML5 dragging needs pointer movement after crossing the drag threshold.
-        input.Perform(actions => actions.MoveToElement(source)
-            .ClickAndHold()
-            .MoveByOffset(8, 0)
-            .Pause(eventDelay)
-            .MoveToElement(target)
-            .MoveByOffset(4, 0)
-            .Pause(eventDelay)
-            .Release());
-    }
+    public void DragFirstColumn() => browser.DragHtml5(By.Id("column-a"), By.Id("column-b"));
     public string FirstColumn => elements.Text(By.CssSelector("#column-a header"));
 
     public string ReadLeftFrame()

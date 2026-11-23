@@ -14,8 +14,14 @@ public sealed class InputActions(IWebDriver driver)
         actions.Perform();
     }
 
+    public void PerformSequences(params ActionSequence[] sequences) =>
+        ((IActionExecutor)driver).PerformActions(sequences);
+
+    public void Click() => Perform(actions => actions.Click());
     public void Click(By locator) => Perform(actions => actions.Click(Ready(locator)));
+    public void DoubleClick() => Perform(actions => actions.DoubleClick());
     public void DoubleClick(By locator) => Perform(actions => actions.DoubleClick(Ready(locator)));
+    public void RightClick() => Perform(actions => actions.ContextClick());
     public void RightClick(By locator) => Perform(actions => actions.ContextClick(Visible(locator)));
     public void Hover(By locator) => Perform(actions => actions.MoveToElement(Visible(locator)));
     public void MoveToElement(By locator, int xOffset, int yOffset) =>
@@ -23,7 +29,11 @@ public sealed class InputActions(IWebDriver driver)
     public void MoveByOffset(int x, int y) => Perform(actions => actions.MoveByOffset(x, y));
     public void MoveToLocation(int x, int y) => Perform(actions => actions.MoveToLocation(x, y));
 
+    public void ClickAndHold() => Perform(actions => actions.ClickAndHold());
     public void ClickAndHold(By locator) => Perform(actions => actions.ClickAndHold(Ready(locator)));
+    public void LongPress(By locator, TimeSpan duration) =>
+        Perform(actions => actions.ClickAndHold(Ready(locator)).Pause(duration).Release());
+
     public void Release() => Perform(actions => actions.Release());
     public void Release(By locator) => Perform(actions => actions.Release(Visible(locator)));
     public void DragAndDrop(By source, By target) =>
@@ -34,6 +44,10 @@ public sealed class InputActions(IWebDriver driver)
     public void SendKeys(string keys) => Perform(actions => actions.SendKeys(keys));
     public void SendKeys(By locator, string keys) => Perform(actions => actions.SendKeys(Ready(locator), keys));
     public void KeyDown(string modifier) => Perform(actions => actions.KeyDown(modifier));
+    public void KeyDown(By locator, string modifier) =>
+        Perform(actions => actions.KeyDown(Ready(locator), modifier));
+    public void KeyUp(By locator, string modifier) =>
+        Perform(actions => actions.KeyUp(Ready(locator), modifier));
     public void KeyUp(string modifier) => Perform(actions => actions.KeyUp(modifier));
     public void Chord(string modifier, string keys) =>
         Perform(actions => actions.KeyDown(modifier).SendKeys(keys).KeyUp(modifier));

@@ -1,7 +1,7 @@
 using System.Net;
 using AutomationFramework.Drivers;
-using AutomationFramework.Reporting;
 using AutomationFramework.UI;
+using AutomationReporting;
 using AventStack.ExtentReports;
 using NUnit.Framework;
 using OpenQA.Selenium;

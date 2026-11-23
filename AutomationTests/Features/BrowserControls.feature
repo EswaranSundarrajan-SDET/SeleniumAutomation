@@ -42,7 +42,7 @@ Feature: Browser controls on The Internet
     When I move the slider one step right
     Then the slider shows "0.5"
 
-  Scenario: Drag a column onto another column
+  Scenario: Drop an HTML5 draggable column onto another column
     Given I open the drag and drop example
     When I drag column A onto column B
     Then the first column label is "B"

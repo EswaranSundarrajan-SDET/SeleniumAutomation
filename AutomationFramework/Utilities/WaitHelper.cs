@@ -28,6 +28,24 @@ public static class WaitHelper
         wait.Until(d => d.FindElements(locator).All(element => !element.Displayed));
     }
 
+    public static void UntilStale(IWebDriver driver, IWebElement element)
+    {
+        var wait = Create(driver);
+        wait.Message = "The original element remained attached to the document.";
+        wait.Until(driverContext =>
+        {
+            try
+            {
+                _ = element.Enabled;
+                return false;
+            }
+            catch (StaleElementReferenceException)
+            {
+                return true;
+            }
+        });
+    }
+
     private static IWebElement ForElement(IWebDriver driver, By locator, Func<IWebElement, bool> condition, string state)
     {
         var wait = Create(driver);

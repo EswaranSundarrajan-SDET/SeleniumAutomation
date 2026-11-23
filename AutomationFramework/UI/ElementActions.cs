@@ -10,8 +10,18 @@ public sealed class ElementActions(IWebDriver driver)
     public IWebElement FindVisible(By locator) => WaitHelper.Visible(driver, locator);
     public IReadOnlyList<IWebElement> FindAll(By locator) => driver.FindElements(locator);
     public void WaitUntilHidden(By locator) => WaitHelper.UntilInvisible(driver, locator);
+    public void WaitUntilStale(IWebElement element) => WaitHelper.UntilStale(driver, element);
 
     public void Click(By locator) => WaitHelper.Enabled(driver, locator).Click();
+    public void ClickByText(By locator, string text)
+    {
+        var wait = WaitHelper.Create(driver);
+        wait.Message = $"No enabled element matching {locator} had the text '{text}'.";
+        var element = wait.Until(d => d.FindElements(locator).FirstOrDefault(candidate =>
+            candidate.Displayed && candidate.Enabled && candidate.Text == text));
+        element!.Click();
+    }
+
     public void Clear(By locator) => WaitHelper.Enabled(driver, locator).Clear();
     public void SendKeys(By locator, string keys) => WaitHelper.Enabled(driver, locator).SendKeys(keys);
 
@@ -36,6 +46,8 @@ public sealed class ElementActions(IWebDriver driver)
         if (checkbox.Selected != selected)
             checkbox.Click();
     }
+
+    public void SelectRadio(By locator) => SetChecked(locator, true);
 
     public void SelectByText(By locator, string text) => Select(locator).SelectByText(text);
     public void SelectByValue(By locator, string value) => Select(locator).SelectByValue(value);

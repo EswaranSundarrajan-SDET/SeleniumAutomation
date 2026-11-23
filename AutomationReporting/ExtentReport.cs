@@ -2,7 +2,7 @@ using System.Net;
 using AventStack.ExtentReports;
 using AventStack.ExtentReports.Reporter;
 
-namespace AutomationFramework.Reporting;
+namespace AutomationReporting;
 
 public sealed class ExtentReport
 {
