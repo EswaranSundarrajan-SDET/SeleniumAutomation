@@ -6,6 +6,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ExtentReports" Version="5.0.4" />
     <PackageReference Include="RestSharp" Version="114.1.0" />
     <PackageReference Include="Selenium.WebDriver" Version="4.28.0" />
     <PackageReference Include="Selenium.Support" Version="4.28.0" />

@@ -34,6 +34,7 @@ jobs:
       - name: Build
         run: dotnet build "$SOLUTION" -c Release --no-restore
       - name: Run scenarios
+        id: scenarios
         run: dotnet test "$TEST_PROJECT" -c Release --no-build --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
       - name: Verify scenario discovery
         run: |
@@ -43,10 +44,13 @@ jobs:
           from pathlib import Path
           root = ET.parse(Path(os.environ["REPORTS_DIR"]) / "selenium.trx")
           counters = root.find(".//{*}Counters")
-          if counters is None or int(counters.get("passed", "0")) < 5:
-              raise SystemExit("Expected at least five passing scenarios")
+          if counters is None or int(counters.get("passed", "0")) < 19:
+              raise SystemExit("Expected at least 19 passing scenarios")
           PY
-      - name: Upload results and failure screenshots
+      - name: Verify Extent HTML report
+        if: ${{ !cancelled() && steps.scenarios.outcome != 'skipped' }}
+        run: test -s "$REPORTS_DIR/ExtentReport.html"
+      - name: Upload HTML, TRX, and failure screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:

@@ -3,6 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <PreserveCompilationContext>true</PreserveCompilationContext>
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
@@ -12,6 +13,6 @@
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
     <PackageReference Include="Reqnroll.NUnit" Version="3.3.3" />
     <ProjectReference Include="../AutomationFramework/AutomationFramework.csproj" />
-    <None Update="TestData/testdata.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="TestData/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

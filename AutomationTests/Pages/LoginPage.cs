@@ -1,4 +1,4 @@
-using AutomationFramework.Utilities;
+using AutomationFramework.UI;
 using AutomationTests.Configuration;
 using OpenQA.Selenium;
 
@@ -6,16 +6,19 @@ namespace AutomationTests.Pages;
 
 public class LoginPage(IWebDriver driver)
 {
-    public void Open() => driver.Navigate().GoToUrl(new Uri(TestSettings.BaseUri, "login"));
+    private readonly ElementActions elements = new(driver);
+    private readonly BrowserActions browser = new(driver);
+
+    public void Open() => browser.Navigate(new Uri(TestSettings.BaseUri, "login"));
 
     public void SignIn(string user, string password)
     {
-        WaitHelper.Visible(driver, By.Id("username")).SendKeys(user);
-        WaitHelper.Visible(driver, By.Id("password")).SendKeys(password);
-        WaitHelper.Visible(driver, By.CssSelector("#login button[type='submit']")).Click();
+        elements.Type(By.Id("username"), user);
+        elements.Type(By.Id("password"), password);
+        elements.Click(By.CssSelector("#login button[type='submit']"));
     }
 
-    public string SecureAreaHeading => WaitHelper.Visible(driver, By.CssSelector("#content h2")).Text;
-    public string SuccessMessage => WaitHelper.Visible(driver, By.CssSelector("#flash.success")).Text;
-    public string ErrorMessage => WaitHelper.Visible(driver, By.CssSelector("#flash.error")).Text;
+    public string SecureAreaHeading => elements.Text(By.CssSelector("#content h2"));
+    public string SuccessMessage => elements.Text(By.CssSelector("#flash.success"));
+    public string ErrorMessage => elements.Text(By.CssSelector("#flash.error"));
 }
