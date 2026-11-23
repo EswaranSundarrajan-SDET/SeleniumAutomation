@@ -4,28 +4,32 @@ using OpenQA.Selenium;
 
 namespace AutomationTests.UI.Pages;
 
-public class LoginPage(IWebDriver driver)
+public sealed class LoginPage(IWebDriver driver) : PageObject(driver, TestSettings.BaseUri)
 {
-    private readonly ElementActions elements = new(driver);
-    private readonly BrowserActions browser = new(driver);
+    private static readonly By Username = By.Id("username");
+    private static readonly By Password = By.Id("password");
+    private static readonly By SubmitButton = By.CssSelector("#login button[type='submit']");
+    private static readonly By SecureHeading = By.CssSelector("#content h2");
+    private static readonly By SuccessBanner = By.CssSelector("#flash.success");
+    private static readonly By ErrorBanner = By.CssSelector("#flash.error");
 
-    public void Open() => browser.Navigate(new Uri(TestSettings.BaseUri, "login"));
+    public void Open() => NavigateTo("login");
 
     public void SignIn(string user, string password)
     {
-        elements.Type(By.Id("username"), user);
-        elements.Type(By.Id("password"), password);
-        elements.Click(By.CssSelector("#login button[type='submit']"));
+        Elements.Type(Username, user);
+        Elements.Type(Password, password);
+        Elements.Click(SubmitButton);
     }
 
     public string SecureAreaHeading
     {
         get
         {
-            browser.WaitForUrl(url => new Uri(url).AbsolutePath == "/secure");
-            return elements.Text(By.CssSelector("#content h2"));
+            Browser.WaitForUrl(url => new Uri(url).AbsolutePath == "/secure");
+            return Elements.Text(SecureHeading);
         }
     }
-    public string SuccessMessage => elements.Text(By.CssSelector("#flash.success"));
-    public string ErrorMessage => elements.Text(By.CssSelector("#flash.error"));
+    public string SuccessMessage => Elements.Text(SuccessBanner);
+    public string ErrorMessage => Elements.Text(ErrorBanner);
 }

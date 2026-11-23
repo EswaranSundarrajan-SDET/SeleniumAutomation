@@ -52,6 +52,17 @@ The first restore requires NuGet access. Selenium Manager can download a matchin
 
 UI features, steps, page objects, and input data live under `AutomationTests/UI`. API features and steps live under `AutomationTests/API`. Both suites use `AutomationTests/Hooks/TestHooks.cs` for reporting. The `@ui` tag enables scenario-scoped browser startup, and screenshots are captured when a browser scenario fails. Shared test configuration lives in `AutomationTests/Configuration/TestSettings.cs`.
 
+## Object-oriented design
+
+| Principle | Where it is used |
+| --- | --- |
+| Encapsulation | `LoginPage.SignIn` owns its selectors and interaction sequence. `ScenarioSession` owns browser and download resources. |
+| Abstraction | `PageObject` exposes shared navigation and UI helpers to derived pages. `IBrowserDriverProvider` defines the browser creation contract. |
+| Inheritance | The login, dynamic loading, browser controls, and advanced controls page objects inherit common behavior from `PageObject`. |
+| Polymorphism | `DriverFactory` calls `IBrowserDriverProvider.Create` and selects the Chrome or Firefox implementation at runtime. The Selenium helpers operate on the returned `IWebDriver`. |
+
+`ApiClient.ExecuteAsync` can take a configured RestSharp request or a resource and `HttpMethod`. The latter keeps method selection and custom-verb handling inside the API library.
+
 ## API tests
 
 The RestSharp client in `ApiAutomation/Clients/ApiClient.cs` executes requests built with `RestRequest`. The live requests check HTTP status, query encoding, echoed JSON, HEAD metadata, and OPTIONS preflight headers. HTTPBingo echoes synthetic data. For TRACE and CONNECT, a RestSharp interceptor sets the verb before an in-process handler records it. These cases check request construction without opening a network connection or establishing a tunnel. Run the transport cases alone with `dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=transport"`.

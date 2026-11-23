@@ -1,19 +1,10 @@
 using System.Net;
-using AutomationFramework.Drivers;
-using AutomationFramework.UI;
 using AutomationReporting;
 using AventStack.ExtentReports;
 using NUnit.Framework;
-using OpenQA.Selenium;
 using Reqnroll;
 
 namespace AutomationTests.Hooks;
-
-public class ScenarioSession
-{
-    public IWebDriver Driver { get; internal set; } = null!;
-    public DirectoryInfo? Downloads { get; internal set; }
-}
 
 [Binding]
 public class TestHooks(ScenarioSession session, ScenarioContext scenario, FeatureContext feature)
@@ -34,12 +25,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
     }
 
     [BeforeScenario("ui", Order = 10)]
-    public void StartBrowser()
-    {
-        if (scenario.ScenarioInfo.Tags.Contains("download"))
-            session.Downloads = Directory.CreateTempSubdirectory("selenium-download-");
-        session.Driver = DriverFactory.Create(session.Downloads?.FullName);
-    }
+    public void StartBrowser() => session.StartBrowser(scenario.ScenarioInfo.Tags.Contains("download"));
 
     [AfterStep]
     public void RecordStep() => result?.Info(WebUtility.HtmlEncode(scenario.StepContext.StepInfo.Text));
@@ -68,14 +54,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         }
         finally
         {
-            try
-            {
-                session.Driver?.Dispose();
-            }
-            finally
-            {
-                session.Downloads?.Delete(recursive: true);
-            }
+            session.StopBrowser();
         }
     }
 
@@ -88,12 +67,12 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
 
     private void CaptureFailure()
     {
-        if (session.Driver is not ITakesScreenshot)
-            return;
-
         try
         {
-            var screenshot = new BrowserActions(session.Driver).CaptureScreenshot();
+            var screenshot = session.CaptureScreenshot();
+            if (screenshot == null)
+                return;
+
             var file = Path.Combine(ReportDirectory.Value, $"{Guid.NewGuid():N}.png");
             screenshot.SaveAsFile(file);
             TestContext.AddTestAttachment(file, scenario.ScenarioInfo.Title);

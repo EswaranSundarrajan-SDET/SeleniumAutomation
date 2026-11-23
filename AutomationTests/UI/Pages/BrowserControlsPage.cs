@@ -4,110 +4,108 @@ using OpenQA.Selenium;
 
 namespace AutomationTests.UI.Pages;
 
-public sealed class BrowserControlsPage(IWebDriver driver)
+public sealed class BrowserControlsPage(IWebDriver driver) : PageObject(driver, TestSettings.BaseUri)
 {
     private static readonly By Dropdown = By.Id("dropdown");
     private static readonly By FirstCheckbox = By.CssSelector("#checkboxes input:first-of-type");
     private static readonly By DeleteButton = By.CssSelector("#elements button");
     private static readonly By FirstProfile = By.CssSelector(".figure");
-    private readonly BrowserActions browser = new(driver);
-    private readonly ElementActions elements = new(driver);
     private readonly InputActions input = new(driver);
     private string? originalWindow;
 
-    public void Open(string path) => browser.Navigate(new Uri(TestSettings.BaseUri, path));
+    public void Open(string path) => NavigateTo(path);
 
-    public void SelectOption(string label) => elements.SelectByText(Dropdown, label);
-    public IReadOnlyList<string> SelectedOptions => elements.SelectedOptions(Dropdown);
+    public void SelectOption(string label) => Elements.SelectByText(Dropdown, label);
+    public IReadOnlyList<string> SelectedOptions => Elements.SelectedOptions(Dropdown);
 
-    public void SetFirstCheckbox(bool selected) => elements.SetChecked(FirstCheckbox, selected);
-    public bool IsFirstCheckboxSelected => elements.IsSelected(FirstCheckbox);
+    public void SetFirstCheckbox(bool selected) => Elements.SetChecked(FirstCheckbox, selected);
+    public bool IsFirstCheckboxSelected => Elements.IsSelected(FirstCheckbox);
 
-    public void AddElement() => elements.Click(By.CssSelector(".example > button"));
-    public void RemoveElement() => elements.Click(DeleteButton);
-    public bool DeleteButtonVisible => elements.FindVisible(DeleteButton).Displayed;
-    public void WaitForDeleteButtonToDisappear() => elements.WaitUntilHidden(DeleteButton);
+    public void AddElement() => Elements.Click(By.CssSelector(".example > button"));
+    public void RemoveElement() => Elements.Click(DeleteButton);
+    public bool DeleteButtonVisible => Elements.FindVisible(DeleteButton).Displayed;
+    public void WaitForDeleteButtonToDisappear() => Elements.WaitUntilHidden(DeleteButton);
 
     public void DismissConfirmation()
     {
-        elements.Click(By.CssSelector("button[onclick='jsConfirm()']"));
-        browser.DismissAlert();
+        Elements.Click(By.CssSelector("button[onclick='jsConfirm()']"));
+        Browser.DismissAlert();
     }
 
     public void SubmitPrompt(string text)
     {
-        elements.Click(By.CssSelector("button[onclick='jsPrompt()']"));
-        browser.SubmitPrompt(text);
+        Elements.Click(By.CssSelector("button[onclick='jsPrompt()']"));
+        Browser.SubmitPrompt(text);
     }
 
-    public string DialogResult => elements.Text(By.Id("result"));
+    public string DialogResult => Elements.Text(By.Id("result"));
 
     public void RightClickContextMenu() => input.RightClick(By.Id("hot-spot"));
     public string ReadAndAcceptAlert()
     {
-        var text = browser.AlertText();
-        browser.AcceptAlert();
+        var text = Browser.AlertText();
+        Browser.AcceptAlert();
         return text;
     }
 
     public void HoverOverFirstProfile() => input.Hover(FirstProfile);
-    public string FirstProfileName => elements.Text(By.CssSelector(".figure:first-of-type .figcaption h5"));
+    public string FirstProfileName => Elements.Text(By.CssSelector(".figure:first-of-type .figcaption h5"));
 
     public void MoveSliderRight()
     {
-        elements.SendKeys(By.CssSelector("input[type='range']"), Keys.Home);
+        Elements.SendKeys(By.CssSelector("input[type='range']"), Keys.Home);
         input.SendKeys(Keys.ArrowRight);
     }
-    public string SliderValue => elements.Text(By.Id("range"));
+    public string SliderValue => Elements.Text(By.Id("range"));
 
-    public void DragFirstColumn() => browser.DragHtml5(By.Id("column-a"), By.Id("column-b"));
-    public string FirstColumn => elements.Text(By.CssSelector("#column-a header"));
+    public void DragFirstColumn() => Browser.DragHtml5(By.Id("column-a"), By.Id("column-b"));
+    public string FirstColumn => Elements.Text(By.CssSelector("#column-a header"));
 
     public string ReadLeftFrame()
     {
-        browser.SwitchToFrame(By.Name("frame-top"));
-        browser.SwitchToFrame(By.Name("frame-left"));
-        var text = elements.Text(By.TagName("body"));
-        browser.SwitchToMainDocument();
+        Browser.SwitchToFrame(By.Name("frame-top"));
+        Browser.SwitchToFrame(By.Name("frame-left"));
+        var text = Elements.Text(By.TagName("body"));
+        Browser.SwitchToMainDocument();
         return text;
     }
 
     public string ReadBottomFrame()
     {
-        browser.SwitchToFrame(By.Name("frame-bottom"));
-        var text = elements.Text(By.TagName("body"));
-        browser.SwitchToMainDocument();
+        Browser.SwitchToFrame(By.Name("frame-bottom"));
+        var text = Elements.Text(By.TagName("body"));
+        Browser.SwitchToMainDocument();
         return text;
     }
 
     public void FollowNewWindowLink()
     {
-        originalWindow = browser.CurrentWindow;
-        var before = browser.WindowHandles;
-        elements.Click(By.CssSelector("a[href='/windows/new']"));
-        browser.SwitchToNewWindow(before);
+        originalWindow = Browser.CurrentWindow;
+        var before = Browser.WindowHandles;
+        Elements.Click(By.CssSelector("a[href='/windows/new']"));
+        Browser.SwitchToNewWindow(before);
     }
 
     public void CloseNewWindow()
     {
-        browser.CloseWindow();
-        browser.SwitchToWindow(originalWindow!);
+        Browser.CloseWindow();
+        Browser.SwitchToWindow(originalWindow!);
     }
 
-    public string WindowHeading => elements.Text(By.CssSelector(".example h3"));
+    public string WindowHeading => Elements.Text(By.CssSelector(".example h3"));
 
     public string? FirstShadowSlotName =>
-        elements.FindInShadowRoot(By.CssSelector("my-paragraph"), By.CssSelector("slot")).GetDomAttribute("name");
+        Elements.FindInShadowRoot(By.CssSelector("my-paragraph"), By.CssSelector("slot")).GetDomAttribute("name");
 
-    public IReadOnlyList<string> TableHeaders => elements.ReadTable(By.Id("table1"))[0];
+    public IReadOnlyList<string> TableHeaders => Elements.ReadTable(By.Id("table1"))[0];
 
     public void UploadFile(string path)
     {
-        elements.UploadFile(By.Id("file-upload"), path);
-        elements.Click(By.Id("file-submit"));
+        Elements.UploadFile(By.Id("file-upload"), path);
+        Elements.Click(By.Id("file-submit"));
     }
 
-    public string UploadedFile => elements.Text(By.Id("uploaded-files"));
+    public string UploadedFile => Elements.Text(By.Id("uploaded-files"));
 
-    public void DownloadFile() => elements.Click(By.Id("data-url-download"));
+    public void DownloadFile() => Elements.Click(By.Id("data-url-download"));
 }

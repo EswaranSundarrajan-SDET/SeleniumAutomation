@@ -9,7 +9,8 @@ namespace AutomationTests.UI.StepDefinitions;
 [Binding]
 public class LoginSteps(ScenarioSession session)
 {
-    private LoginPage Page => new(session.Driver);
+    private LoginPage? page;
+    private LoginPage Page => page ??= new(session.Driver);
     private readonly TestData data = TestSettings.LoadData();
 
     [Given("I open the login page")]

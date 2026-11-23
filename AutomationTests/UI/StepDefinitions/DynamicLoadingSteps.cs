@@ -8,7 +8,8 @@ namespace AutomationTests.UI.StepDefinitions;
 [Binding]
 public class DynamicLoadingSteps(ScenarioSession session)
 {
-    private DynamicLoadingPage Page => new(session.Driver);
+    private DynamicLoadingPage? page;
+    private DynamicLoadingPage Page => page ??= new(session.Driver);
 
     [Given("I open the dynamic loading example")]
     public void Open() => Page.Open();

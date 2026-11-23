@@ -4,7 +4,6 @@ using ApiAutomation.Clients;
 using NUnit.Framework;
 using Reqnroll;
 using RestSharp;
-using RestSharp.Interceptors;
 
 namespace AutomationTests.API.StepDefinitions;
 
@@ -33,19 +32,8 @@ public sealed class HttpMethodSteps
     [When("I send {word} through the in-process transport")]
     public async Task SendThroughControlledTransport(string method)
     {
-        var request = new RestRequest("request");
-        if (Enum.TryParse<Method>(method, ignoreCase: true, out var supportedMethod))
-        {
-            request.Method = supportedMethod;
-        }
-        else
-        {
-            // RestSharp's Method enum has no TRACE or CONNECT values.
-            request.Interceptors = [new OverrideMethod(new HttpMethod(method))];
-        }
-
         using var api = new ApiClient(new Uri("https://api.example.test/"), new MethodEchoHandler());
-        response = await api.ExecuteAsync(request);
+        response = await api.ExecuteAsync("request", new HttpMethod(method));
     }
 
     [Then("the response echoes method {string}")]
@@ -100,15 +88,6 @@ public sealed class HttpMethodSteps
     {
         CheckSuccess();
         return JsonDocument.Parse(response.Content ?? throw new InvalidDataException("The response body was empty."));
-    }
-
-    private sealed class OverrideMethod(HttpMethod method) : Interceptor
-    {
-        public override ValueTask BeforeHttpRequest(HttpRequestMessage requestMessage, CancellationToken cancellationToken)
-        {
-            requestMessage.Method = method;
-            return ValueTask.CompletedTask;
-        }
     }
 
     private sealed class MethodEchoHandler : HttpMessageHandler
