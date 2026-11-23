@@ -1,0 +1,54 @@
+name: Selenium CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-tests:
+    name: Selenium (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    env:
+      BROWSER: ${{ matrix.browser }}
+      HEADLESS: 'true'
+      REPORTS_DIR: ${{ github.workspace }}/AutomationFramework/Reports
+      PROJECT: AutomationFramework/AutomationFramework.csproj
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore "$PROJECT"
+      - name: Build
+        run: dotnet build "$PROJECT" -c Release --no-restore
+      - name: Run scenarios
+        run: dotnet test "$PROJECT" -c Release --no-build --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
+      - name: Verify scenario discovery
+        run: |
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          root = ET.parse(Path(os.environ["REPORTS_DIR"]) / "selenium.trx")
+          counters = root.find(".//{*}Counters")
+          if counters is None or int(counters.get("passed", "0")) < 3:
+              raise SystemExit("Expected at least three passing scenarios")
+          PY
+      - name: Upload results and failure screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-${{ matrix.browser }}
+          path: AutomationFramework/Reports/
+          if-no-files-found: warn
