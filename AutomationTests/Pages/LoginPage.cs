@@ -18,7 +18,14 @@ public class LoginPage(IWebDriver driver)
         elements.Click(By.CssSelector("#login button[type='submit']"));
     }
 
-    public string SecureAreaHeading => elements.Text(By.CssSelector("#content h2"));
+    public string SecureAreaHeading
+    {
+        get
+        {
+            browser.WaitForUrl(url => new Uri(url).AbsolutePath == "/secure");
+            return elements.Text(By.CssSelector("#content h2"));
+        }
+    }
     public string SuccessMessage => elements.Text(By.CssSelector("#flash.success"));
     public string ErrorMessage => elements.Text(By.CssSelector("#flash.error"));
 }
