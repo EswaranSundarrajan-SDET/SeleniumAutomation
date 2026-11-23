@@ -1,11 +1,12 @@
 using AutomationFramework.Utilities;
+using AutomationTests.Configuration;
 using OpenQA.Selenium;
 
-namespace AutomationFramework.Pages;
+namespace AutomationTests.Pages;
 
 public class LoginPage(IWebDriver driver)
 {
-    public void Open() => driver.Navigate().GoToUrl(new Uri(ConfigHelper.BaseUri, "login"));
+    public void Open() => driver.Navigate().GoToUrl(new Uri(TestSettings.BaseUri, "login"));
 
     public void SignIn(string user, string password)
     {

@@ -21,19 +21,20 @@ jobs:
     env:
       BROWSER: ${{ matrix.browser }}
       HEADLESS: 'true'
-      REPORTS_DIR: ${{ github.workspace }}/AutomationFramework/Reports
-      PROJECT: AutomationFramework/AutomationFramework.csproj
+      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports
+      SOLUTION: SeleniumAutomation.sln
+      TEST_PROJECT: AutomationTests/AutomationTests.csproj
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
       - name: Restore
-        run: dotnet restore "$PROJECT"
+        run: dotnet restore "$SOLUTION"
       - name: Build
-        run: dotnet build "$PROJECT" -c Release --no-restore
+        run: dotnet build "$SOLUTION" -c Release --no-restore
       - name: Run scenarios
-        run: dotnet test "$PROJECT" -c Release --no-build --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
+        run: dotnet test "$TEST_PROJECT" -c Release --no-build --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
       - name: Verify scenario discovery
         run: |
           python3 - <<'PY'
@@ -50,5 +51,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: selenium-${{ matrix.browser }}
-          path: AutomationFramework/Reports/
+          path: AutomationTests/Reports/
           if-no-files-found: warn

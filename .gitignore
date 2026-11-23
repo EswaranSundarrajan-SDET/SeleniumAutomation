@@ -2,6 +2,6 @@
 **/obj/
 **/TestResults/
 **/*.feature.cs
-AutomationFramework/Reports/*
-!AutomationFramework/Reports/.gitkeep
+AutomationTests/Reports/*
+!AutomationTests/Reports/.gitkeep
 .vs/

@@ -3,7 +3,7 @@ using NUnit.Framework;
 using OpenQA.Selenium;
 using Reqnroll;
 
-namespace AutomationFramework.Hooks;
+namespace AutomationTests.Hooks;
 
 public class ScenarioSession
 {

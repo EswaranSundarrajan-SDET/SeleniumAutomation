@@ -2,12 +2,16 @@ using RestSharp;
 
 namespace AutomationFramework.API;
 
-public class ApiClient(RestClient client)
+public sealed class ApiClient(Uri baseUri) : IDisposable
 {
-    public Task<RestResponse> GetStatusCodeExampleAsync(int statusCode)
+    private readonly RestClient client = new(new RestClientOptions(baseUri)
     {
-        var request = new RestRequest("status_codes/{statusCode}", Method.Get)
-            .AddUrlSegment("statusCode", statusCode);
-        return client.ExecuteAsync(request);
-    }
+        Timeout = TimeSpan.FromSeconds(30),
+        FollowRedirects = false
+    });
+
+    public Task<RestResponse> GetAsync(string resource) =>
+        client.ExecuteAsync(new RestRequest(resource, Method.Get));
+
+    public void Dispose() => client.Dispose();
 }

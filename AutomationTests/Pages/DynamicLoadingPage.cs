@@ -1,11 +1,12 @@
 using AutomationFramework.Utilities;
+using AutomationTests.Configuration;
 using OpenQA.Selenium;
 
-namespace AutomationFramework.Pages;
+namespace AutomationTests.Pages;
 
 public class DynamicLoadingPage(IWebDriver driver)
 {
-    public void Open() => driver.Navigate().GoToUrl(new Uri(ConfigHelper.BaseUri, "dynamic_loading/2"));
+    public void Open() => driver.Navigate().GoToUrl(new Uri(TestSettings.BaseUri, "dynamic_loading/2"));
 
     public void Start() => WaitHelper.Visible(driver, By.CssSelector("#start button")).Click();
 

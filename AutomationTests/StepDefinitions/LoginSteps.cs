@@ -1,16 +1,16 @@
-using AutomationFramework.Hooks;
-using AutomationFramework.Pages;
-using AutomationFramework.Utilities;
+using AutomationTests.Hooks;
+using AutomationTests.Pages;
+using AutomationTests.Configuration;
 using NUnit.Framework;
 using Reqnroll;
 
-namespace AutomationFramework.StepDefinitions;
+namespace AutomationTests.StepDefinitions;
 
 [Binding]
 public class LoginSteps(ScenarioSession session)
 {
     private LoginPage Page => new(session.Driver);
-    private readonly TestData data = ConfigHelper.LoadData();
+    private readonly TestData data = TestSettings.LoadData();
 
     [Given("I open the login page")]
     public void Open() => Page.Open();

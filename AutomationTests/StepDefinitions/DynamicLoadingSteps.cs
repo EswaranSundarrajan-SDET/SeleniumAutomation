@@ -1,9 +1,9 @@
-using AutomationFramework.Hooks;
-using AutomationFramework.Pages;
+using AutomationTests.Hooks;
+using AutomationTests.Pages;
 using NUnit.Framework;
 using Reqnroll;
 
-namespace AutomationFramework.StepDefinitions;
+namespace AutomationTests.StepDefinitions;
 
 [Binding]
 public class DynamicLoadingSteps(ScenarioSession session)
