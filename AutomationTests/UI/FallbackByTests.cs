@@ -7,7 +7,7 @@ using OpenQA.Selenium;
 namespace AutomationTests.UI;
 
 /// <summary>Verifies locator fallback rules without starting a web browser.</summary>
-[Category("ui")]
+[Category("ui-fallback")]
 public sealed class FallbackByTests
 {
     private static readonly By Primary = By.Id("original");

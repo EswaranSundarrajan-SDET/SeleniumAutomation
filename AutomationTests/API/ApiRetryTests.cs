@@ -7,7 +7,7 @@ using RestSharp;
 namespace AutomationTests.API;
 
 /// <summary>Verifies retry behavior with a deterministic HTTP handler that sends no network requests.</summary>
-[Category("http")]
+[Category("api-retry")]
 public sealed class ApiRetryTests
 {
     private static readonly Uri BaseUri = new("https://example.test/");

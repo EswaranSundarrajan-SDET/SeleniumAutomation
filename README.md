@@ -37,7 +37,7 @@ dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=http"
 dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui"
 ```
 
-Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` after the run. A full run includes both suites in the same report. Reports include scenario outcomes and executed steps. The browser report embeds screenshots on failure. To watch the UI scenarios in Firefox and write reports to the Reports folder, run these commands from the repository root.
+Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` after the run. A full run includes both suites in the same report. Each BDD step includes its Gherkin keyword, resolved text, and status. The browser report embeds screenshots on failure. To watch the UI scenarios in Firefox and write reports to the Reports folder, run these commands from the repository root.
 
 ```powershell
 $env:BROWSER = "firefox"
@@ -59,7 +59,7 @@ dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui" --
 dotnet test SeleniumAutomation.sln -- NUnit.NumberOfTestWorkers=1
 ```
 
-GitHub Actions runs Chrome, Firefox, and API in separate jobs. Each job checks its TRX timestamps for overlapping scenario execution and publishes its own report.
+GitHub Actions runs Chrome and Firefox in Selenium CI and the API tests in RestSharp API CI. Each job checks its scenario TRX timestamps for overlapping execution and publishes its own report.
 
 ## Extend the suite
 
@@ -102,4 +102,4 @@ For a native dropdown, use `SelectByText`, `SelectByValue`, or `SelectByIndex`. 
 
 ## GitHub Actions
 
-Selenium CI runs on pull requests, pushes to main, and manual dispatch. The Chrome and Firefox jobs build the solution, run the test project, and publish `ExtentReport.html`, TRX results, and any failure screenshots in the `selenium-chrome` and `selenium-firefox` artifacts. The RestSharp job selects the API scenarios from the same test project and publishes an HTML report and TRX results in the `restsharp-api` artifact.
+Both workflows run on pull requests, pushes to main, and manual dispatch. Selenium CI runs the UI suite on Chrome and Firefox and publishes the HTML report, TRX results, and any failure screenshots in the `selenium-chrome` and `selenium-firefox` artifacts. RestSharp API CI runs the API scenarios and retry checks from the same test project and publishes its HTML report and TRX results in the `restsharp-api` artifact.
