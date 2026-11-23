@@ -36,17 +36,8 @@ jobs:
       - name: Run scenarios
         id: scenarios
         run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
-      - name: Verify scenario discovery
-        run: |
-          python3 - <<'PY'
-          import os
-          import xml.etree.ElementTree as ET
-          from pathlib import Path
-          root = ET.parse(Path(os.environ["REPORTS_DIR"]) / "selenium.trx")
-          counters = root.find(".//{*}Counters")
-          if counters is None or int(counters.get("passed", "0")) < 25:
-              raise SystemExit("Expected at least 25 passing scenarios")
-          PY
+      - name: Verify scenarios ran in parallel
+        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 25
       - name: Verify Extent HTML report
         if: ${{ !cancelled() && steps.scenarios.outcome != 'skipped' }}
         run: test -s "$REPORTS_DIR/ExtentReport.html"
@@ -73,17 +64,8 @@ jobs:
       - name: Run API scenarios
         id: api-scenarios
         run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=http" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
-      - name: Verify API scenario discovery
-        run: |
-          python3 - <<'PY'
-          import os
-          import xml.etree.ElementTree as ET
-          from pathlib import Path
-          root = ET.parse(Path(os.environ["REPORTS_DIR"]) / "api.trx")
-          counters = root.find(".//{*}Counters")
-          if counters is None or int(counters.get("passed", "0")) < 14:
-              raise SystemExit("Expected at least 14 passing API scenarios")
-          PY
+      - name: Verify API scenarios ran in parallel
+        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/api.trx" 6
       - name: Verify Extent HTML report
         if: ${{ !cancelled() && steps.api-scenarios.outcome != 'skipped' }}
         run: test -s "$REPORTS_DIR/ExtentReport.html"

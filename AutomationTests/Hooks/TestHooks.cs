@@ -1,4 +1,3 @@
-using System.Net;
 using AutomationReporting;
 using AventStack.ExtentReports;
 using NUnit.Framework;
@@ -28,7 +27,11 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
     public void StartBrowser() => session.StartBrowser(scenario.ScenarioInfo.Tags.Contains("download"));
 
     [AfterStep]
-    public void RecordStep() => result?.Info(WebUtility.HtmlEncode(scenario.StepContext.StepInfo.Text));
+    public void RecordStep()
+    {
+        if (result != null)
+            Report.Value.Log(result, Status.Info, scenario.StepContext.StepInfo.Text);
+    }
 
     [AfterScenario]
     public void FinishScenario()
@@ -40,16 +43,16 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
 
             if (scenario.TestError is Exception error)
             {
-                result.Fail(WebUtility.HtmlEncode(error.ToString()));
-                CaptureFailure();
+                Report.Value.Log(result, Status.Fail, error.ToString());
+                CaptureFailure(result);
             }
             else if (scenario.ScenarioExecutionStatus == ScenarioExecutionStatus.OK)
             {
-                result.Pass("Scenario passed");
+                Report.Value.Log(result, Status.Pass, "Scenario passed");
             }
             else
             {
-                result.Skip(scenario.ScenarioExecutionStatus.ToString());
+                Report.Value.Log(result, Status.Skip, scenario.ScenarioExecutionStatus.ToString());
             }
         }
         finally
@@ -65,7 +68,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
             Report.Value.Flush();
     }
 
-    private void CaptureFailure()
+    private void CaptureFailure(ExtentTest reportEntry)
     {
         try
         {
@@ -76,7 +79,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
             var file = Path.Combine(ReportDirectory.Value, $"{Guid.NewGuid():N}.png");
             screenshot.SaveAsFile(file);
             TestContext.AddTestAttachment(file, scenario.ScenarioInfo.Title);
-            result!.AddScreenCaptureFromBase64String(screenshot.AsBase64EncodedString, "Failure screenshot");
+            Report.Value.AttachScreenshot(reportEntry, screenshot.AsBase64EncodedString);
         }
         catch (Exception error)
         {
