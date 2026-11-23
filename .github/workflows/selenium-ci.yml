@@ -42,8 +42,8 @@ jobs:
           from pathlib import Path
           root = ET.parse(Path(os.environ["REPORTS_DIR"]) / "selenium.trx")
           counters = root.find(".//{*}Counters")
-          if counters is None or int(counters.get("passed", "0")) < 3:
-              raise SystemExit("Expected at least three passing scenarios")
+          if counters is None or int(counters.get("passed", "0")) < 5:
+              raise SystemExit("Expected at least five passing scenarios")
           PY
       - name: Upload results and failure screenshots
         if: always()

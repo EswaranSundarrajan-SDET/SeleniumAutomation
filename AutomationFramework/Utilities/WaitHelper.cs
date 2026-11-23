@@ -5,10 +5,13 @@ namespace AutomationFramework.Utilities;
 
 public static class WaitHelper
 {
-    public static IWebElement Visible(IWebDriver driver, string id)
+    public static IWebElement Visible(IWebDriver driver, By locator)
     {
-        var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+        var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(15))
+        {
+            Message = $"Element did not become visible: {locator}"
+        };
         wait.IgnoreExceptionTypes(typeof(StaleElementReferenceException));
-        return wait.Until(d => d.FindElements(By.Id(id)).FirstOrDefault(e => e.Displayed))!;
+        return wait.Until(d => d.FindElements(locator).FirstOrDefault(element => element.Displayed))!;
     }
 }

@@ -1,5 +1,5 @@
 {
-  "User": "demo",
-  "Password": "demo-only",
-  "Amount": 12500.50
+  "User": "tomsmith",
+  "Password": "SuperSecretPassword!",
+  "InvalidPassword": "incorrect-demo-password"
 }
