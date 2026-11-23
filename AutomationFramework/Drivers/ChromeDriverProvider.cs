@@ -3,8 +3,10 @@ using OpenQA.Selenium.Chrome;
 
 namespace AutomationFramework.Drivers;
 
+/// <summary>Builds Chrome sessions using Chromium-specific options.</summary>
 internal sealed class ChromeDriverProvider : IBrowserDriverProvider
 {
+    /// <summary>Starts Chrome with a fixed viewport and applies a scenario download preference when supplied.</summary>
     public IWebDriver Create(bool headless, string? downloadDirectory)
     {
         var options = new ChromeOptions();

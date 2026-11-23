@@ -1,0 +1,42 @@
+name: RestSharp API CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  api-tests:
+    name: RestSharp API tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports/API
+      TEST_PROJECT: AutomationTests/AutomationTests.csproj
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      # Keep the retry policy tests out of the TRX used to verify live scenario overlap.
+      - name: Check API retry behavior
+        run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=api-retry" --logger "trx;LogFileName=api-retry.trx" --results-directory "$REPORTS_DIR"
+      - name: Run API scenarios
+        id: api-scenarios
+        run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=http" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
+      - name: Verify API scenarios ran in parallel
+        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/api.trx" 6
+      - name: Verify Extent HTML report
+        if: ${{ !cancelled() && steps.api-scenarios.outcome != 'skipped' }}
+        run: test -s "$REPORTS_DIR/ExtentReport.html"
+      - name: Upload API HTML and TRX
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: restsharp-api
+          path: ${{ env.REPORTS_DIR }}/
+          if-no-files-found: warn

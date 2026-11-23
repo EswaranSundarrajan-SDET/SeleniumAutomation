@@ -10,6 +10,7 @@ permissions:
   contents: read
 
 jobs:
+  # Each browser writes its own report and verifies that UI scenarios overlap.
   browser-tests:
     name: Selenium (${{ matrix.browser }})
     runs-on: ubuntu-latest
@@ -33,11 +34,13 @@ jobs:
         run: dotnet restore "$SOLUTION"
       - name: Build
         run: dotnet build "$SOLUTION" -c Release --no-restore
+      - name: Check fallback locator rules
+        run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui-fallback" --logger "trx;LogFileName=ui-fallback.trx" --results-directory "$REPORTS_DIR"
       - name: Run scenarios
         id: scenarios
         run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
       - name: Verify scenarios ran in parallel
-        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 25
+        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 26
       - name: Verify Extent HTML report
         if: ${{ !cancelled() && steps.scenarios.outcome != 'skipped' }}
         run: test -s "$REPORTS_DIR/ExtentReport.html"
@@ -46,33 +49,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: selenium-${{ matrix.browser }}
-          path: ${{ env.REPORTS_DIR }}/
-          if-no-files-found: warn
-
-  api-tests:
-    name: RestSharp API tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports/API
-      TEST_PROJECT: AutomationTests/AutomationTests.csproj
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0.x'
-      - name: Run API scenarios
-        id: api-scenarios
-        run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=http" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
-      - name: Verify API scenarios ran in parallel
-        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/api.trx" 6
-      - name: Verify Extent HTML report
-        if: ${{ !cancelled() && steps.api-scenarios.outcome != 'skipped' }}
-        run: test -s "$REPORTS_DIR/ExtentReport.html"
-      - name: Upload API HTML and TRX
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: restsharp-api
           path: ${{ env.REPORTS_DIR }}/
           if-no-files-found: warn
