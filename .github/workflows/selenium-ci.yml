@@ -1,0 +1,96 @@
+name: Selenium CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-tests:
+    name: Selenium (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox]
+    env:
+      BROWSER: ${{ matrix.browser }}
+      HEADLESS: 'true'
+      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports/${{ matrix.browser }}
+      SOLUTION: SeleniumAutomation.sln
+      TEST_PROJECT: AutomationTests/AutomationTests.csproj
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Restore
+        run: dotnet restore "$SOLUTION"
+      - name: Build
+        run: dotnet build "$SOLUTION" -c Release --no-restore
+      - name: Run scenarios
+        id: scenarios
+        run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
+      - name: Verify scenario discovery
+        run: |
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          root = ET.parse(Path(os.environ["REPORTS_DIR"]) / "selenium.trx")
+          counters = root.find(".//{*}Counters")
+          if counters is None or int(counters.get("passed", "0")) < 25:
+              raise SystemExit("Expected at least 25 passing scenarios")
+          PY
+      - name: Verify Extent HTML report
+        if: ${{ !cancelled() && steps.scenarios.outcome != 'skipped' }}
+        run: test -s "$REPORTS_DIR/ExtentReport.html"
+      - name: Upload HTML, TRX, and failure screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selenium-${{ matrix.browser }}
+          path: ${{ env.REPORTS_DIR }}/
+          if-no-files-found: warn
+
+  api-tests:
+    name: RestSharp API tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports/API
+      TEST_PROJECT: AutomationTests/AutomationTests.csproj
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Run API scenarios
+        id: api-scenarios
+        run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=http" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
+      - name: Verify API scenario discovery
+        run: |
+          python3 - <<'PY'
+          import os
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          root = ET.parse(Path(os.environ["REPORTS_DIR"]) / "api.trx")
+          counters = root.find(".//{*}Counters")
+          if counters is None or int(counters.get("passed", "0")) < 14:
+              raise SystemExit("Expected at least 14 passing API scenarios")
+          PY
+      - name: Verify Extent HTML report
+        if: ${{ !cancelled() && steps.api-scenarios.outcome != 'skipped' }}
+        run: test -s "$REPORTS_DIR/ExtentReport.html"
+      - name: Upload API HTML and TRX
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: restsharp-api
+          path: ${{ env.REPORTS_DIR }}/
+          if-no-files-found: warn
