@@ -5,6 +5,7 @@ using Reqnroll;
 
 namespace AutomationTests.Hooks;
 
+/// <summary>Runs the shared Reqnroll lifecycle and reporting for API and UI scenarios.</summary>
 [Binding]
 public class TestHooks(ScenarioSession session, ScenarioContext scenario, FeatureContext feature)
 {
@@ -14,6 +15,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
     private static readonly Lazy<ExtentReport> Report = new(() => new ExtentReport(ReportDirectory.Value));
     private ExtentTest? result;
 
+    /// <summary>Starts a report entry before browser setup and includes scenario-outline arguments in its name.</summary>
     [BeforeScenario(Order = 0)]
     public void StartReport()
     {
@@ -23,9 +25,11 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         result = Report.Value.StartScenario(feature.FeatureInfo.Title, name);
     }
 
+    /// <summary>Starts the browser for UI scenarios and enables downloads for scenarios tagged accordingly.</summary>
     [BeforeScenario("ui", Order = 10)]
     public void StartBrowser() => session.StartBrowser(scenario.ScenarioInfo.Tags.Contains("download"));
 
+    /// <summary>Appends the executed step text to the current scenario's report.</summary>
     [AfterStep]
     public void RecordStep()
     {
@@ -33,6 +37,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
             Report.Value.Log(result, Status.Info, scenario.StepContext.StepInfo.Text);
     }
 
+    /// <summary>Records the outcome and guarantees that the scenario's browser cleanup runs.</summary>
     [AfterScenario]
     public void FinishScenario()
     {
@@ -61,6 +66,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         }
     }
 
+    /// <summary>Flushes the shared HTML report when the test run finishes.</summary>
     [AfterTestRun]
     public static void WriteReport()
     {
@@ -68,6 +74,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
             Report.Value.Flush();
     }
 
+    /// <summary>Attaches a browser screenshot when available and reports capture errors separately from the test failure.</summary>
     private void CaptureFailure(ExtentTest reportEntry)
     {
         try

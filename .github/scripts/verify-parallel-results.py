@@ -4,6 +4,7 @@ from datetime import datetime
 
 
 def peak_concurrency(results):
+    """Find the maximum overlap among test result time ranges."""
     events = []
     for result in results:
         start = datetime.fromisoformat(result.attrib["startTime"])
@@ -19,6 +20,7 @@ def peak_concurrency(results):
 
 
 def main():
+    """Fail the CI check when too few tests passed or none overlapped."""
     path, minimum_passed = sys.argv[1:]
     trx = ET.parse(path)
     counters = trx.find(".//{*}Counters")

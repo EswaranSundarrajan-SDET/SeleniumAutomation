@@ -10,6 +10,7 @@ permissions:
   contents: read
 
 jobs:
+  # Each browser writes its own report and verifies that UI scenarios overlap.
   browser-tests:
     name: Selenium (${{ matrix.browser }})
     runs-on: ubuntu-latest
@@ -49,6 +50,7 @@ jobs:
           path: ${{ env.REPORTS_DIR }}/
           if-no-files-found: warn
 
+  # The API job selects HTTP tests from the shared test assembly.
   api-tests:
     name: RestSharp API tests
     runs-on: ubuntu-latest

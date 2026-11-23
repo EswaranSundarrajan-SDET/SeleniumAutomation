@@ -3,8 +3,10 @@ using OpenQA.Selenium.Firefox;
 
 namespace AutomationFramework.Drivers;
 
+/// <summary>Builds Firefox sessions using Gecko-specific options.</summary>
 internal sealed class FirefoxDriverProvider : IBrowserDriverProvider
 {
+    /// <summary>Starts Firefox and applies its download preferences when the scenario needs a download directory.</summary>
     public IWebDriver Create(bool headless, string? downloadDirectory)
     {
         var options = new FirefoxOptions();

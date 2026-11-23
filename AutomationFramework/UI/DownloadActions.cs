@@ -2,8 +2,10 @@ using OpenQA.Selenium.Support.UI;
 
 namespace AutomationFramework.UI;
 
+/// <summary>Waits for files in the scenario's download directory.</summary>
 public static class DownloadActions
 {
+    /// <summary>Returns the downloaded file path after the named file appears and temporary download files disappear.</summary>
     public static string WaitForFile(string directory, string fileName, TimeSpan? timeout = null)
     {
         if (Path.GetFileName(fileName) != fileName || string.IsNullOrWhiteSpace(fileName))
