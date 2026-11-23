@@ -1,5 +1,4 @@
 using RestSharp;
-using RestSharp.Interceptors;
 
 namespace ApiAutomation.Clients;
 
@@ -25,8 +24,14 @@ public sealed class ApiClient : IDisposable
         });
     }
 
-    public Task<RestResponse> ExecuteAsync(RestRequest request, CancellationToken cancellationToken = default) =>
-        client.ExecuteAsync(request, cancellationToken);
+    public Task<RestResponse> ExecuteAsync(RestRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Method is not (Method.Get or Method.Post or Method.Put or Method.Patch))
+            throw new NotSupportedException($"HTTP method {request.Method} is not supported.");
+
+        return client.ExecuteAsync(request, cancellationToken);
+    }
 
     public Task<RestResponse> ExecuteAsync(
         string resource,
@@ -35,30 +40,17 @@ public sealed class ApiClient : IDisposable
     {
         ArgumentNullException.ThrowIfNull(method);
 
-        var request = new RestRequest(resource);
-        var verb = method.Method;
-        if (Enum.TryParse<Method>(verb, ignoreCase: true, out var namedMethod) &&
-            namedMethod.ToString().ToUpperInvariant() == verb)
+        var supportedMethod = method.Method switch
         {
-            request.Method = namedMethod;
-        }
-        else
-        {
-            request.Interceptors = [new HttpMethodInterceptor(method)];
-        }
+            "GET" => Method.Get,
+            "POST" => Method.Post,
+            "PUT" => Method.Put,
+            "PATCH" => Method.Patch,
+            _ => throw new NotSupportedException($"HTTP method {method} is not supported.")
+        };
 
-        return ExecuteAsync(request, cancellationToken);
+        return ExecuteAsync(new RestRequest(resource, supportedMethod), cancellationToken);
     }
 
     public void Dispose() => client.Dispose();
-
-    // RestSharp's Method enum has no TRACE or CONNECT values.
-    private sealed class HttpMethodInterceptor(HttpMethod method) : Interceptor
-    {
-        public override ValueTask BeforeHttpRequest(HttpRequestMessage requestMessage, CancellationToken cancellationToken)
-        {
-            requestMessage.Method = method;
-            return ValueTask.CompletedTask;
-        }
-    }
 }

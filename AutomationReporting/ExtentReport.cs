@@ -6,6 +6,7 @@ namespace AutomationReporting;
 
 public sealed class ExtentReport
 {
+    private readonly object reportLock = new();
     private readonly ExtentReports report = new();
 
     public ExtentReport(string directory)
@@ -15,8 +16,27 @@ public sealed class ExtentReport
         report.AttachReporter(reporter);
     }
 
-    public ExtentTest StartScenario(string feature, string name) =>
-        report.CreateTest(WebUtility.HtmlEncode(name)).AssignCategory(WebUtility.HtmlEncode(feature));
+    public ExtentTest StartScenario(string feature, string name)
+    {
+        lock (reportLock)
+            return report.CreateTest(WebUtility.HtmlEncode(name)).AssignCategory(WebUtility.HtmlEncode(feature));
+    }
 
-    public void Flush() => report.Flush();
+    public void Log(ExtentTest scenario, Status status, string message)
+    {
+        lock (reportLock)
+            scenario.Log(status, WebUtility.HtmlEncode(message));
+    }
+
+    public void AttachScreenshot(ExtentTest scenario, string base64)
+    {
+        lock (reportLock)
+            scenario.AddScreenCaptureFromBase64String(base64, "Failure screenshot");
+    }
+
+    public void Flush()
+    {
+        lock (reportLock)
+            report.Flush();
+    }
 }

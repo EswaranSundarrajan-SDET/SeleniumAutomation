@@ -16,25 +16,3 @@ Feature: HTTP methods
       | POST   |
       | PUT    |
       | PATCH  |
-      | DELETE |
-
-  Scenario: HEAD returns metadata and an empty body
-    When I send HEAD to the echo service
-    Then the response contains JSON metadata and no body
-
-  Scenario: OPTIONS returns supported methods for a preflight request
-    When I send OPTIONS to the echo service for method PATCH
-    Then the response allows PATCH in its CORS headers
-
-  @transport
-  Scenario Outline: Exercise additional request verbs with a controlled transport
-    When I send <method> through the in-process transport
-    Then the transport receives method "<method>"
-
-    Examples:
-      | method  |
-      | TRACE   |
-      | CONNECT |
-      | COPY    |
-      | MERGE   |
-      | SEARCH  |

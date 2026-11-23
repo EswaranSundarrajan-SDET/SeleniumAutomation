@@ -1,6 +1,6 @@
 # Selenium Automation
 
-The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, and ExtentReports. Browser scenarios run against [The Internet](https://the-internet.herokuapp.com/). API scenarios use The Internet, [HTTPBingo](https://httpbingo.org/), and a controlled in-process HTTP transport.
+The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, and ExtentReports. Browser scenarios run against [The Internet](https://the-internet.herokuapp.com/). API scenarios use The Internet and [HTTPBingo](https://httpbingo.org/).
 
 | Feature | Coverage |
 | --- | --- |
@@ -9,7 +9,7 @@ The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, and Ext
 | Browser controls | Dropdowns, checkboxes, dynamic elements, alerts, context menus, hovers, sliders, drag and drop, nested frames, new windows, shadow DOM, tables, upload, and download |
 | Advanced controls | Radio buttons, native multi-select, custom dropdowns, autocomplete, calendar, dynamically enabled inputs, stale elements, swipe, and long press |
 | HTTP status codes | Checks 200 and 404 responses from The Internet with RestSharp |
-| HTTP methods | Live GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS using the HTTPBingo echo service. TRACE, CONNECT, COPY, MERGE, and SEARCH are checked in process at the transport boundary |
+| HTTP methods | GET, POST, PUT, and PATCH using the HTTPBingo echo service |
 
 ## Projects
 
@@ -48,6 +48,19 @@ dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui" --
 
 The first restore requires NuGet access. Selenium Manager can download a matching driver when one is unavailable locally.
 
+## Parallel execution
+
+NUnit runs up to two Reqnroll scenarios at a time by default. Each UI scenario creates and disposes its own browser session. Download tests get a unique temporary directory, and API scenarios keep their responses in scenario-scoped step instances. The shared hook writes separate scenario entries to the Extent HTML report.
+
+Use a worker override when running a suite from the command line. A single worker runs scenarios sequentially.
+
+```powershell
+dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui" -- NUnit.NumberOfTestWorkers=4
+dotnet test SeleniumAutomation.sln -- NUnit.NumberOfTestWorkers=1
+```
+
+GitHub Actions runs Chrome, Firefox, and API in separate jobs. Each job checks its TRX timestamps for overlapping scenario execution and publishes its own report.
+
 ## Extend the suite
 
 UI features, steps, page objects, and input data live under `AutomationTests/UI`. API features and steps live under `AutomationTests/API`. Both suites use `AutomationTests/Hooks/TestHooks.cs` for reporting. The `@ui` tag enables scenario-scoped browser startup, and screenshots are captured when a browser scenario fails. Shared test configuration lives in `AutomationTests/Configuration/TestSettings.cs`.
@@ -61,11 +74,11 @@ UI features, steps, page objects, and input data live under `AutomationTests/UI`
 | Inheritance | The login, dynamic loading, browser controls, and advanced controls page objects inherit common behavior from `PageObject`. |
 | Polymorphism | `DriverFactory` calls `IBrowserDriverProvider.Create` and selects the Chrome or Firefox implementation at runtime. The Selenium helpers operate on the returned `IWebDriver`. |
 
-`ApiClient.ExecuteAsync` can take a configured RestSharp request or a resource and `HttpMethod`. The latter keeps method selection and custom-verb handling inside the API library.
+`ApiClient.ExecuteAsync` can take a configured RestSharp request or a resource and `HttpMethod`. The client supports GET, POST, PUT, and PATCH.
 
 ## API tests
 
-The RestSharp client in `ApiAutomation/Clients/ApiClient.cs` executes requests built with `RestRequest`. The live requests check HTTP status, query encoding, echoed JSON, HEAD metadata, and OPTIONS preflight headers. HTTPBingo echoes synthetic data. For TRACE and CONNECT, a RestSharp interceptor sets the verb before an in-process handler records it. These cases check request construction without opening a network connection or establishing a tunnel. Run the transport cases alone with `dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=transport"`.
+The RestSharp client in `ApiAutomation/Clients/ApiClient.cs` executes requests built with `RestRequest`. The scenarios check HTTP status, query encoding, and echoed JSON payloads using synthetic data.
 
 ## UI helpers
 
