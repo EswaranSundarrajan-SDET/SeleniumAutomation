@@ -53,17 +53,35 @@ public sealed class BrowserControlsPage(IWebDriver driver)
     public void HoverOverFirstProfile() => input.Hover(FirstProfile);
     public string FirstProfileName => elements.Text(By.CssSelector(".figure:first-of-type .figcaption h5"));
 
-    public void MoveSliderRight() => input.SendKeys(By.CssSelector("input[type='range']"), Keys.ArrowRight);
+    public void MoveSliderRight()
+    {
+        elements.SendKeys(By.CssSelector("input[type='range']"), Keys.Home);
+        input.SendKeys(Keys.ArrowRight);
+    }
     public string SliderValue => elements.Text(By.Id("range"));
 
-    public void DragFirstColumn() => input.DragAndDrop(By.Id("column-a"), By.Id("column-b"));
+    public void DragFirstColumn()
+    {
+        var source = elements.FindVisible(By.Id("column-a"));
+        var target = elements.FindVisible(By.Id("column-b"));
+        var eventDelay = TimeSpan.FromMilliseconds(150);
+        // HTML5 dragging needs pointer movement after crossing the drag threshold.
+        input.Perform(actions => actions.MoveToElement(source)
+            .ClickAndHold()
+            .MoveByOffset(8, 0)
+            .Pause(eventDelay)
+            .MoveToElement(target)
+            .MoveByOffset(4, 0)
+            .Pause(eventDelay)
+            .Release());
+    }
     public string FirstColumn => elements.Text(By.CssSelector("#column-a header"));
 
     public string ReadLeftFrame()
     {
         browser.SwitchToFrame(By.Name("frame-top"));
         browser.SwitchToFrame(By.Name("frame-left"));
-        var text = elements.Text(By.Id("content"));
+        var text = elements.Text(By.TagName("body"));
         browser.SwitchToMainDocument();
         return text;
     }
