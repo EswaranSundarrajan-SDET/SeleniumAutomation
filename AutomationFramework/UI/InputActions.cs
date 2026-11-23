@@ -31,8 +31,11 @@ public sealed class InputActions(IWebDriver driver)
 
     public void ClickAndHold() => Perform(actions => actions.ClickAndHold());
     public void ClickAndHold(By locator) => Perform(actions => actions.ClickAndHold(Ready(locator)));
-    public void LongPress(By locator, TimeSpan duration) =>
+    public void LongPress(By locator, TimeSpan duration)
+    {
+        new BrowserActions(driver).ScrollIntoView(locator);
         Perform(actions => actions.ClickAndHold(Ready(locator)).Pause(duration).Release());
+    }
 
     public void Release() => Perform(actions => actions.Release());
     public void Release(By locator) => Perform(actions => actions.Release(Visible(locator)));
