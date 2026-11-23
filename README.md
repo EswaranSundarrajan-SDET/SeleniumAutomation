@@ -1,6 +1,6 @@
 # Selenium Automation
 
-The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, and ExtentReports. Browser scenarios run against [The Internet](https://the-internet.herokuapp.com/). API scenarios use The Internet and [HTTPBingo](https://httpbingo.org/).
+The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, ExtentReports, and Serilog. Browser scenarios run against [The Internet](https://the-internet.herokuapp.com/). API scenarios use The Internet and [HTTPBingo](https://httpbingo.org/).
 
 | Feature | Coverage |
 | --- | --- |
@@ -18,13 +18,13 @@ The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, and Ext
 | `AutomationFramework` | Reusable Selenium class library with driver creation, browser configuration, waits, and UI helpers |
 | `AutomationTests` | UI and API scenarios under `UI/` and `API/`, with shared Reqnroll hooks in `Hooks/` |
 | `ApiAutomation` | RestSharp client library |
-| `AutomationReporting` | Extent HTML reporting shared by the UI and API projects |
+| `AutomationReporting` | Extent HTML reporting and Serilog file configuration shared by the UI and API suites |
 
 `AutomationTests` references `AutomationFramework` for Selenium, `ApiAutomation` for RestSharp, and `AutomationReporting` for Extent HTML reporting.
 
 ## Run locally
 
-Install the .NET 8 SDK and Chrome or Firefox. Run from the repository root.
+Install the .NET 8 SDK. Run from the repository root.
 
 ```powershell
 dotnet test SeleniumAutomation.sln
@@ -37,7 +37,7 @@ dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=http"
 dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui"
 ```
 
-Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` after the run. A full run includes both suites in the same report. Each BDD step includes its Gherkin keyword, resolved text, and status. The browser report embeds screenshots on failure. To watch the UI scenarios in Firefox and write reports to the Reports folder, run these commands from the repository root.
+Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` after the run. A full run includes both suites in the same report. Each BDD step includes its Gherkin keyword, resolved text, and status. The browser report embeds screenshots on failure. Serilog writes `automation.log` to the same directory, including scenario and step outcomes, WebDriver start and stop events, API response status and timing, and retries. Set `REPORTS_DIR` to choose the output directory. To watch the UI scenarios in Firefox, run these commands from the repository root.
 
 ```powershell
 $env:BROWSER = "firefox"
@@ -46,7 +46,7 @@ $env:REPORTS_DIR = Join-Path $PWD "AutomationTests/Reports"
 dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory $env:REPORTS_DIR
 ```
 
-The first restore requires NuGet access. Selenium Manager can download a matching driver when one is unavailable locally.
+The first restore requires NuGet access. For UI tests, Selenium Manager checks for the latest stable release of the browser selected by `BROWSER` and downloads it as needed. The `WebDriverManager` NuGet package sets up the matching driver in `~/.cache/seleniumautomation/drivers`, and the framework starts and disposes one session per scenario. The release check and initial downloads require network access.
 
 ## Parallel execution
 
@@ -69,7 +69,7 @@ UI features, steps, page objects, and input data live under `AutomationTests/UI`
 
 | Principle | Where it is used |
 | --- | --- |
-| Encapsulation | `LoginPage.SignIn` owns its selectors and interaction sequence. `ScenarioSession` owns browser and download resources. |
+| Encapsulation | `LoginPage.SignIn` owns its selectors and interaction sequence. `WebDriverSession` owns the browser session and `ScenarioSession` owns temporary downloads. |
 | Abstraction | `PageObject` exposes shared navigation and UI helpers to derived pages. `IBrowserDriverProvider` defines the browser creation contract. |
 | Inheritance | The login, dynamic loading, browser controls, and advanced controls page objects inherit common behavior from `PageObject`. |
 | Polymorphism | `DriverFactory` calls `IBrowserDriverProvider.Create` and selects the Chrome or Firefox implementation at runtime. The Selenium helpers operate on the returned `IWebDriver`. |
@@ -79,6 +79,8 @@ UI features, steps, page objects, and input data live under `AutomationTests/UI`
 ## API tests
 
 The RestSharp client in `ApiAutomation/Clients/ApiClient.cs` executes requests built with `RestRequest`. The scenarios check HTTP status, query encoding, and echoed JSON payloads using synthetic data.
+
+Polly automatically retries GET and PUT requests without file attachments up to two times after temporary HTTP errors, timeouts, or dropped connections. POST, PATCH, and requests with files run once. The policy honors `Retry-After` up to five seconds and returns the response when the server asks for a longer delay.
 
 ## UI helpers
 
@@ -92,6 +94,8 @@ The RestSharp client in `ApiAutomation/Clients/ApiClient.cs` executes requests b
 
 Use these helpers in page objects. For a sequence that needs the full Selenium Actions builder, use `InputActions.Perform`. Use `PerformSequences` to submit low-level sequences for devices such as touch and pen.
 
+`ElementActions` uses Polly to retry supported reads and interactions up to two times when an element becomes stale or temporarily cannot be interacted with. Each attempt resolves the locator again.
+
 ```csharp
 var input = new InputActions(driver);
 var item = driver.FindElement(By.Id("item"));
@@ -102,4 +106,4 @@ For a native dropdown, use `SelectByText`, `SelectByValue`, or `SelectByIndex`. 
 
 ## GitHub Actions
 
-Both workflows run on pull requests, pushes to main, and manual dispatch. Selenium CI runs the UI suite on Chrome and Firefox and publishes the HTML report, TRX results, and any failure screenshots in the `selenium-chrome` and `selenium-firefox` artifacts. RestSharp API CI runs the API scenarios and retry checks from the same test project and publishes its HTML report and TRX results in the `restsharp-api` artifact.
+Both workflows run on pull requests, pushes to main, and manual dispatch. Selenium CI runs the UI suite on Chrome and Firefox and publishes the HTML report, `automation.log`, TRX results, and any failure screenshots in the `selenium-chrome` and `selenium-firefox` artifacts. RestSharp API CI runs the API scenarios and publishes its HTML report, log, and TRX results in the `restsharp-api` artifact.

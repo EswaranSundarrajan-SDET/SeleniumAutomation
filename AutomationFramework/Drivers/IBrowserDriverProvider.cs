@@ -6,5 +6,5 @@ namespace AutomationFramework.Drivers;
 internal interface IBrowserDriverProvider
 {
     /// <summary>Starts a session with the requested visibility and optional download directory.</summary>
-    IWebDriver Create(bool headless, string? downloadDirectory);
+    IWebDriver Create(bool headless, string? downloadDirectory, BrowserBinaries binaries);
 }

@@ -7,8 +7,7 @@ namespace AutomationTests.UI.Pages;
 /// <summary>Encapsulates the demo authentication form and its outcome messages.</summary>
 public sealed class LoginPage(IWebDriver driver) : PageObject(driver, TestSettings.BaseUri)
 {
-    private static readonly By UsernameId = By.Id("username");
-    private static readonly By Username = new FallbackBy(UsernameId, By.CssSelector("#login input[name='username']"));
+    private static readonly By Username = By.Id("username");
     private static readonly By Password = By.Id("password");
     private static readonly By SubmitButton = By.CssSelector("#login button[type='submit']");
     private static readonly By SecureHeading = By.CssSelector("#content h2");
@@ -17,10 +16,6 @@ public sealed class LoginPage(IWebDriver driver) : PageObject(driver, TestSettin
 
     /// <summary>Opens the login form using the scenario's existing browser.</summary>
     public void Open() => NavigateTo("login");
-
-    /// <summary>Simulates a renamed field ID in this browser so the fallback selector can be exercised.</summary>
-    public void ChangeUsernameId() =>
-        Browser.ExecuteScript("arguments[0].id = 'renamed-username';", Elements.Find(UsernameId));
 
     /// <summary>Enters the supplied credentials and submits the form.</summary>
     public void SignIn(string user, string password)

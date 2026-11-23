@@ -34,16 +34,14 @@ jobs:
         run: dotnet restore "$SOLUTION"
       - name: Build
         run: dotnet build "$SOLUTION" -c Release --no-restore
-      - name: Check fallback locator rules
-        run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui-fallback" --logger "trx;LogFileName=ui-fallback.trx" --results-directory "$REPORTS_DIR"
       - name: Run scenarios
         id: scenarios
         run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
       - name: Verify scenarios ran in parallel
-        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 26
-      - name: Verify Extent HTML report
+        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 25
+      - name: Verify HTML report and automation log
         if: ${{ !cancelled() && steps.scenarios.outcome != 'skipped' }}
-        run: test -s "$REPORTS_DIR/ExtentReport.html"
+        run: test -s "$REPORTS_DIR/ExtentReport.html" && test -s "$REPORTS_DIR/automation.log"
       - name: Upload HTML, TRX, and failure screenshots
         if: always()
         uses: actions/upload-artifact@v4

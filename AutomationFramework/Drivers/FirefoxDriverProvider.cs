@@ -7,9 +7,9 @@ namespace AutomationFramework.Drivers;
 internal sealed class FirefoxDriverProvider : IBrowserDriverProvider
 {
     /// <summary>Starts Firefox and applies its download preferences when the scenario needs a download directory.</summary>
-    public IWebDriver Create(bool headless, string? downloadDirectory)
+    public IWebDriver Create(bool headless, string? downloadDirectory, BrowserBinaries binaries)
     {
-        var options = new FirefoxOptions();
+        var options = new FirefoxOptions { BinaryLocation = binaries.BrowserPath };
         if (headless)
             options.AddArgument("-headless");
         if (downloadDirectory != null)
@@ -18,6 +18,8 @@ internal sealed class FirefoxDriverProvider : IBrowserDriverProvider
             options.SetPreference("browser.download.dir", Path.GetFullPath(downloadDirectory));
             options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "text/plain,text/csv,application/octet-stream");
         }
-        return new FirefoxDriver(options);
+        var service = FirefoxDriverService.CreateDefaultService(Path.GetDirectoryName(binaries.DriverPath),
+            Path.GetFileName(binaries.DriverPath));
+        return new FirefoxDriver(service, options);
     }
 }

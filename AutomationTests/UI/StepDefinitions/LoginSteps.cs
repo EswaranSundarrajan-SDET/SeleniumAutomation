@@ -19,10 +19,6 @@ public class LoginSteps(ScenarioSession session)
     [Given("I open the login page")]
     public void Open() => Page.Open();
 
-    /// <summary>Changes the primary field locator in the current browser to exercise the fallback.</summary>
-    [Given("the username field has a different ID")]
-    public void ChangeUsernameId() => Page.ChangeUsernameId();
-
     /// <summary>Submits the public test account credentials from the test data file.</summary>
     [When("I sign in with the public demo account")]
     public void SignIn() => Page.SignIn(data.User, data.Password);

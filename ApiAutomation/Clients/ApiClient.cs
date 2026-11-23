@@ -1,7 +1,12 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using Polly;
+using Polly.Retry;
 using RestSharp;
+using Serilog;
+using Serilog.Context;
+using Serilog.Events;
 
 namespace ApiAutomation.Clients;
 
@@ -10,6 +15,27 @@ public sealed class ApiClient : IDisposable
 {
     private const int MaxRetries = 2;
     private static readonly TimeSpan MaxRetryDelay = TimeSpan.FromSeconds(5);
+    private static readonly ResiliencePipeline<RestResponse> Retry = new ResiliencePipelineBuilder<RestResponse>()
+        .AddRetry(new RetryStrategyOptions<RestResponse>
+        {
+            MaxRetryAttempts = MaxRetries,
+            Delay = TimeSpan.FromMilliseconds(250),
+            BackoffType = DelayBackoffType.Exponential,
+            ShouldHandle = new PredicateBuilder<RestResponse>().HandleResult(response =>
+                IsTransient(response) && (GetRetryAfter(response) ?? TimeSpan.Zero) <= MaxRetryDelay),
+            DelayGenerator = args => ValueTask.FromResult(GetRetryAfter(args.Outcome.Result!)),
+            OnRetry = args =>
+            {
+                var response = args.Outcome.Result!;
+                Log.ForContext<ApiClient>().Warning(
+                    "Retrying API request ({Attempt}/{MaxRetries}) for {Method} after {StatusCode} ({ResponseStatus})",
+                    args.AttemptNumber + 1, MaxRetries, response.Request?.Method, (int)response.StatusCode,
+                    response.ResponseStatus);
+                return default;
+            }
+        })
+        .Build();
+
     private readonly RestClient client;
 
     /// <summary>Creates a client for the service base URL with a 30-second request timeout and redirects disabled.</summary>
@@ -32,34 +58,19 @@ public sealed class ApiClient : IDisposable
         });
     }
 
-    /// <summary>Executes GET, POST, PUT, or PATCH and retries eligible GET and PUT requests by default.</summary>
-    public Task<RestResponse> ExecuteAsync(RestRequest request, CancellationToken cancellationToken = default) =>
-        ExecuteAsync(request, cancellationToken, ApiRetryMode.IdempotentMethods);
-
-    /// <summary>Applies the caller's retry policy to this request. Requests containing files always use one attempt.</summary>
+    /// <summary>Executes GET, POST, PUT, or PATCH and retries eligible GET and PUT requests with Polly.</summary>
     /// <param name="request">The configured RestSharp request. Use a separate request instance for each concurrent call.</param>
     /// <param name="cancellationToken">Cancels the call or its retry delay.</param>
-    /// <param name="retryMode">The replay policy. Opt in for POST or PATCH only when the endpoint guarantees safe replay.</param>
-    public Task<RestResponse> ExecuteAsync(RestRequest request, CancellationToken cancellationToken, ApiRetryMode retryMode)
+    public Task<RestResponse> ExecuteAsync(RestRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
         if (request.Method is not (Method.Get or Method.Post or Method.Put or Method.Patch))
             throw new NotSupportedException($"HTTP method {request.Method} is not supported.");
 
-        var allowRetry = retryMode switch
-        {
-            ApiRetryMode.Never => false,
-            ApiRetryMode.IdempotentMethods => request.Method is Method.Get or Method.Put,
-            ApiRetryMode.ReplaySafeRequest => true,
-            _ => throw new ArgumentOutOfRangeException(nameof(retryMode))
-        };
-
-        return allowRetry && request.Files.Count == 0
-            ? ExecuteWithRetryAsync(request, cancellationToken)
-            : client.ExecuteAsync(request, cancellationToken);
+        return SendAsync(request, cancellationToken);
     }
 
-    /// <summary>Executes a resource with a supported HTTP method using the default retry policy.</summary>
+    /// <summary>Executes a resource with a supported HTTP method using the same retry policy.</summary>
     public Task<RestResponse> ExecuteAsync(
         string resource,
         HttpMethod method,
@@ -82,23 +93,21 @@ public sealed class ApiClient : IDisposable
     /// <summary>Disposes the underlying RestSharp client and its HTTP resources.</summary>
     public void Dispose() => client.Dispose();
 
-    /// <summary>Retries an eligible request at most twice and returns the final response when its retry budget is exhausted.</summary>
-    private async Task<RestResponse> ExecuteWithRetryAsync(RestRequest request, CancellationToken cancellationToken)
+    private async Task<RestResponse> SendAsync(RestRequest request, CancellationToken cancellationToken)
     {
-        for (var retries = 0; ; retries++)
-        {
-            var response = await client.ExecuteAsync(request, cancellationToken).ConfigureAwait(false);
-            if (retries == MaxRetries || cancellationToken.IsCancellationRequested || !IsTransient(response))
-                return response;
+        using var requestScope = LogContext.PushProperty("RequestId", Guid.NewGuid());
+        var started = Stopwatch.GetTimestamp();
+        var allowRetry = request.Method is (Method.Get or Method.Put) && request.Files.Count == 0;
+        var response = allowRetry
+            ? await Retry.ExecuteAsync(token => new ValueTask<RestResponse>(client.ExecuteAsync(request, token)),
+                cancellationToken).ConfigureAwait(false)
+            : await client.ExecuteAsync(request, cancellationToken).ConfigureAwait(false);
 
-            var delay = RetryDelay(response, retries);
-            if (delay > MaxRetryDelay)
-                return response;
-
-            Trace.TraceWarning("RestSharp retry {0}/{1} for {2}. HTTP status: {3}. Response status: {4}.",
-                retries + 1, MaxRetries, request.Method, (int)response.StatusCode, response.ResponseStatus);
-            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-        }
+        var status = (int)response.StatusCode;
+        var level = status == 0 || status >= 500 ? LogEventLevel.Warning : LogEventLevel.Information;
+        Log.ForContext<ApiClient>().Write(level, "API {Method} returned {StatusCode} ({ResponseStatus}) in {ElapsedMs} ms",
+            request.Method, status, response.ResponseStatus, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        return response;
     }
 
     /// <summary>Checks for selected transient HTTP errors, timeouts, and connection failures reported by RestSharp.</summary>
@@ -112,17 +121,15 @@ public sealed class ApiClient : IDisposable
                 HttpRequestError: HttpRequestError.ConnectionError or HttpRequestError.ResponseEnded
             }));
 
-    /// <summary>Uses Retry-After when valid or backs off for 250 then 500 milliseconds. The caller stops when the server asks for more than five seconds.</summary>
-    private static TimeSpan RetryDelay(RestResponse response, int retries)
+    /// <summary>Returns the server's requested delay, or null to use exponential backoff.</summary>
+    private static TimeSpan? GetRetryAfter(RestResponse response)
     {
         var header = response.Headers?.FirstOrDefault(parameter =>
             string.Equals(parameter.Name, "Retry-After", StringComparison.OrdinalIgnoreCase));
-        if (RetryConditionHeaderValue.TryParse(header?.Value?.ToString(), out var retryAfter))
-        {
-            var delay = retryAfter.Delta ?? retryAfter.Date.GetValueOrDefault() - DateTimeOffset.UtcNow;
-            return delay < TimeSpan.Zero ? TimeSpan.Zero : delay;
-        }
+        if (!RetryConditionHeaderValue.TryParse(header?.Value?.ToString(), out var retryAfter))
+            return null;
 
-        return TimeSpan.FromMilliseconds(250 * (1 << retries));
+        var delay = retryAfter.Delta ?? retryAfter.Date.GetValueOrDefault() - DateTimeOffset.UtcNow;
+        return delay < TimeSpan.Zero ? TimeSpan.Zero : delay;
     }
 }

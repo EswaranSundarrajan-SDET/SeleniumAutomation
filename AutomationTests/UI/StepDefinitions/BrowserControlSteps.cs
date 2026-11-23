@@ -168,7 +168,8 @@ public sealed class BrowserControlSteps(ScenarioSession session)
     [Then("the downloaded file contains {string}")]
     public void VerifyDownload(string expected)
     {
-        var path = DownloadActions.WaitForFile(session.DownloadDirectory, "hello.txt");
+        var path = DownloadActions.WaitForFile(session.DownloadDirectory, "hello.txt", timeout: null,
+            minimumBytes: System.Text.Encoding.UTF8.GetByteCount(expected));
         Assert.That(File.ReadAllText(path).Trim(), Is.EqualTo(expected));
     }
 }
