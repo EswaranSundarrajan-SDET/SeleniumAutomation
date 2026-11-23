@@ -36,8 +36,9 @@ public sealed class ApiClient : IDisposable
         ArgumentNullException.ThrowIfNull(method);
 
         var request = new RestRequest(resource);
-        if (Enum.TryParse<Method>(method.Method, ignoreCase: true, out var namedMethod) &&
-            string.Equals(namedMethod.ToString(), method.Method, StringComparison.OrdinalIgnoreCase))
+        var verb = method.Method;
+        if (Enum.TryParse<Method>(verb, ignoreCase: true, out var namedMethod) &&
+            namedMethod.ToString().ToUpperInvariant() == verb)
         {
             request.Method = namedMethod;
         }
