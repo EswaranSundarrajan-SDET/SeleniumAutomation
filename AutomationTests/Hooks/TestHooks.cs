@@ -72,7 +72,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         if (tags.Contains("ui", StringComparer.OrdinalIgnoreCase))
             return "UI";
 
-        return tags.Contains("http", StringComparer.OrdinalIgnoreCase) ? "API" : null;
+        return tags.Contains("API", StringComparer.OrdinalIgnoreCase) ? "API" : null;
     }
 
     /// <summary>Starts the browser for UI scenarios and enables downloads for scenarios tagged accordingly.</summary>

@@ -4,21 +4,75 @@ A C# and .NET 8 test suite for browser behavior and HTTP APIs. Start with the hu
 
 The browser scenarios use The Internet, a public website with examples of common web controls. The API scenarios use its status-code endpoints and HTTPBingo, which echoes requests so the tests can verify what the server received. [The Internet](https://the-internet.herokuapp.com/) · [HTTPBingo](https://httpbingo.org/)
 
+## Contents
+
+- [Run the tests](#run-the-tests)
+- [Reports and logs](#reports-and-logs)
+- [Repository structure](#repository-structure)
+- [UI automation](#ui-automation)
+- [API automation](#api-automation)
+- [Configuration and parallel execution](#configuration-and-parallel-execution)
+- [Continuous integration](#continuous-integration)
+- [Add a scenario](#add-a-scenario)
+
 ## Run the tests
 
-Install the .NET 8 SDK and run these commands from the repository root. NuGet restore, browser and driver provisioning, and calls to the demo sites require network access.
+### Prerequisites
+
+Install the .NET 8 SDK and run the commands below from the repository root. NuGet restore, browser and driver provisioning, and calls to the demo sites require network access.
+
+### Run UI and API tests together
+
+This command generates one report for both suites.
 
 ```powershell
 dotnet test Web_API_Automation.sln
-dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui"
-dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=http"
 ```
 
-The first command runs both suites. The other commands select the UI or API scenarios. You can also open the solution in Visual Studio and run scenarios in Test Explorer. [Web_API_Automation.sln](Web_API_Automation.sln)
+### Run UI tests only
 
-After a run, open `AutomationTests/Reports/Automation Execution Results.html` for the scenario results and `AutomationTests/Reports/automation.log` for the detailed log. The solution-wide command puts both suites in one HTML report. In the **Tests** view, results appear below the **UI** heading first, followed by the results below **API**. Select either heading to collapse or expand its results. Select a scenario to see its BDD steps, or use the tag icon to filter by category. Expand **Screenshot** below a UI step or **HTTP details** below an API step to inspect its evidence.
+```powershell
+dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui"
+```
 
-## How the projects fit together
+### Run API tests only
+
+```powershell
+dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=API"
+```
+
+### Run from Visual Studio
+
+Open the solution in Visual Studio and run scenarios in Test Explorer. [Web_API_Automation.sln](Web_API_Automation.sln)
+
+## Reports and logs
+
+### Open the local report
+
+After a run, use PowerShell from the repository root to open the HTML report in your default browser. [Open-Report.ps1](Open-Report.ps1)
+
+```powershell
+.\Open-Report.ps1
+```
+
+The script opens `AutomationTests/Reports/Automation Execution Results.html` by default. If you set `REPORTS_DIR` for the test run, keep it set when you run the script. The detailed log is `automation.log` in the same directory.
+
+### Read the combined report
+
+In the **Tests** view, results appear below the **UI** heading first, followed by the results below **API**. Select either heading to collapse or expand its results. Select a scenario to see its BDD steps, or use the tag icon to filter by category. Expand **Screenshot** below a UI step or **HTTP details** below an API step to inspect its evidence.
+
+### Generated files
+
+| Output | What you can find in it |
+| --- | --- |
+| `Automation Execution Results.html` | [ExtentReport.cs](AutomationReporting/ExtentReport.cs) creates the HTML report. Scenarios tagged `@ui` appear under **UI**, and scenarios tagged `@API` appear under **API**. Each entry shows its feature name and its steps, including their results, elapsed time, and matching definitions. UI steps embed a browser screenshot. A native dialog can block capture, so the report records its text and shows the most recent viewport when available. API steps show the request, response status, or values checked by the assertion. Expand the other details to view a data table, doc string, failure, or skip explanation. |
+| `automation.log` | [Logger.cs](AutomationReporting/Logger.cs) writes timestamped Serilog events for both suites. It records scenario and step results, WebDriver provisioning and session events, API outcomes, and retries. |
+| `*.png` | A screenshot saved when a UI scenario fails and the active browser supports capture. The test result also receives an attachment. |
+| `*.trx` | A test-runner results file generated when the TRX logger is selected. CI reads it to verify passing scenario counts and parallel execution. |
+
+## Repository structure
+
+### Projects
 
 | Project | Responsibility |
 | --- | --- |
@@ -40,14 +94,14 @@ flowchart LR
     Api --> Log
 ```
 
-## How a scenario runs
+### Scenario lifecycle
 
 1. **Discovery.** Reqnroll turns each Gherkin `Scenario` into a test that NUnit can run. A `Scenario Outline` runs once for each row in its `Examples` table. `Given` describes the starting state, `When` describes an action, and `Then` describes the expected result. `And` continues the preceding kind of step.
-2. **Setup.** `TestHooks` starts the logger for the test run and creates a report entry for each scenario. A scenario tagged `@ui` starts its own browser. A UI scenario tagged `@download` also gets a temporary download directory. API scenarios tagged `@http` call HTTP endpoints directly. [TestHooks.cs](AutomationTests/Hooks/TestHooks.cs)
+2. **Setup.** `TestHooks` starts the logger for the test run and creates a report entry for each scenario. A scenario tagged `@ui` starts its own browser. A UI scenario tagged `@download` also gets a temporary download directory. API scenarios tagged `@API` call HTTP endpoints directly. [TestHooks.cs](AutomationTests/Hooks/TestHooks.cs)
 3. **Execution.** A step definition is a C# method associated with a Gherkin sentence. In the valid-login test, `LoginSteps` reads the demo test data and calls `LoginPage.SignIn`. The page object finds the fields and submits the form, and the step definition checks for the secure area and success message. In the API status-code test, `StatusCodeSteps` sends a GET request and checks the returned status against the example value, including the expected `404`.
 4. **Reporting and cleanup.** The hooks record each step’s result and screenshot or HTTP details as it finishes. A failed browser scenario can also save a separate screenshot for the test runner. `ScenarioSession` closes the browser and removes its temporary download directory. The run-level hook flushes the report and log when the run ends. [ScenarioSession.cs](AutomationTests/Hooks/ScenarioSession.cs)
 
-## Test files and coverage
+### UI test coverage
 
 Each UI feature describes the behavior in Gherkin. Its **step definitions** run the actions and assertions. Its **page object** keeps the page’s locators, navigation, and interactions together, so a selector change can be made in one place.
 
@@ -58,10 +112,14 @@ Each UI feature describes the behavior in Gherkin. Its **step definitions** run 
 | [BrowserControls.feature](AutomationTests/UI/Features/BrowserControls.feature) | [BrowserControlSteps.cs](AutomationTests/UI/StepDefinitions/BrowserControlSteps.cs), [BrowserControlsPage.cs](AutomationTests/UI/Pages/BrowserControlsPage.cs) | Dropdowns, checkboxes, elements added or removed by the page, dialogs, right-click and hover behavior, a keyboard-controlled slider, HTML5 drag and drop, nested frames, new windows, shadow DOM, table headers, and file uploads and downloads. |
 | [AdvancedControls.feature](AutomationTests/UI/Features/AdvancedControls.feature) | [AdvancedControlsSteps.cs](AutomationTests/UI/StepDefinitions/AdvancedControlsSteps.cs), [AdvancedControlsPage.cs](AutomationTests/UI/Pages/AdvancedControlsPage.cs) | Radio buttons, multiple selections, custom dropdowns, autocomplete, a calendar, an input that becomes enabled later, an element replaced in the page, and swipe and long-press gestures. |
 
+### API test coverage
+
 | API feature | C# file | What the scenarios check |
 | --- | --- | --- |
 | [HttpMethods.feature](AutomationTests/API/Features/HttpMethods.feature) | [HttpMethodSteps.cs](AutomationTests/API/StepDefinitions/HttpMethodSteps.cs) | HTTPBingo echoes the GET method and query parameter, and echoes the method and JSON payload for POST, PUT, and PATCH. |
 | [StatusCodes.feature](AutomationTests/API/Features/StatusCodes.feature) | [StatusCodeSteps.cs](AutomationTests/API/StepDefinitions/StatusCodeSteps.cs) | The Internet returns the requested example status code, either `200` or `404`. |
+
+### Shared test files
 
 | Shared test file | Purpose |
 | --- | --- |
@@ -73,9 +131,13 @@ Each UI feature describes the behavior in Gherkin. Its **step definitions** run 
 | [AssemblyInfo.cs](AutomationTests/Properties/AssemblyInfo.cs) | Enables NUnit parallel execution for child tests and sets the default worker count to two. |
 | [Reports/.gitkeep](AutomationTests/Reports/.gitkeep) | Keeps the empty reports folder visible in a fresh checkout. The reporter and logger create the output directory when the tests run. |
 
-## Browser setup and reusable UI helpers
+## UI automation
+
+### Browser and driver setup
 
 `DriverFactory` selects Chrome or Firefox and applies the browser’s headless and download settings. On the first request for a browser in a test process, Selenium Manager checks the latest stable release, prepares the browser, and resolves a compatible driver version. The WebDriverManager NuGet package sets up that driver in `~/.cache/seleniumautomation/drivers`. The factory reuses the resolved browser and driver paths within the process and starts a fresh browser session for each UI scenario. [DriverFactory.cs](AutomationFramework/Drivers/DriverFactory.cs)
+
+### Page objects and Selenium helpers
 
 The four page classes inherit `PageObject`, which supplies shared navigation and element helpers. Those helpers use Selenium’s `IWebDriver` interface, so the same page and step code works with Chrome and Firefox.
 
@@ -89,15 +151,23 @@ The four page classes inherit `PageObject`, which supplies shared navigation and
 | [InputActions.cs](AutomationFramework/UI/InputActions.cs) | Builds Selenium keyboard, pointer, and wheel action sequences. Use `Perform` for a custom Selenium Actions sequence and `PerformSequences` for low-level device actions. |
 | [DownloadActions.cs](AutomationFramework/UI/DownloadActions.cs) | Waits for the expected download in the scenario’s temporary folder. It checks for common partial-file extensions and can wait for a minimum file size before the test reads the contents. |
 
-## API requests and retries
+## API automation
+
+### HTTP client
 
 `ApiClient` accepts a configured RestSharp `RestRequest` or a resource path and `HttpMethod`. It supports GET, POST, PUT, and PATCH, sets a 30-second timeout per request attempt, and returns the RestSharp response for the step definition to assert on. [ApiClient.cs](ApiAutomation/Clients/ApiClient.cs)
 
+### Polly retry policy
+
 Polly retries GET and PUT without attachments up to two times after HTTP `408`, `429`, `500`, `502`, `503`, or `504` or selected transport timeouts and connection failures. The usual delays are 250 ms and 500 ms. A valid `Retry-After` header supplies the delay up to five seconds. A longer requested delay causes the client to return the response immediately. POST, PATCH, and file uploads use one attempt to avoid replaying requests that could have side effects.
+
+### Request logging
 
 Each API request gets a request ID. The logger uses the same ID for retry warnings and the final response event, which includes the HTTP method, status, and elapsed time.
 
 ## Configuration and parallel execution
+
+### Settings and defaults
 
 | Setting | Default | Effect |
 | --- | --- | --- |
@@ -106,7 +176,7 @@ Each API request gets a request ID. The logger uses the same ID for retry warnin
 | `REPORTS_DIR` | `AutomationTests/Reports` | Sets the HTML, log, and screenshot output directory. The default follows the test project even when build output is redirected. |
 | `NUnit.NumberOfTestWorkers` | `2` | Controls the number of parallel NUnit workers. Pass an override after `--` on the `dotnet test` command line. |
 
-Two workers can run separate scenarios at the same time. Each UI scenario owns its driver and download directory. API responses are stored in the step-definition instance for the current scenario. Extent report updates are synchronized, and the shared logger adds run, scenario, or request identifiers to help follow events from parallel scenarios.
+### Run Firefox with a visible window
 
 To watch Firefox and save a TRX results file alongside the other reports, use these PowerShell commands.
 
@@ -117,6 +187,10 @@ $env:REPORTS_DIR = Join-Path $PWD "AutomationTests/Reports"
 dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory $env:REPORTS_DIR
 ```
 
+### Control parallel workers
+
+Two workers can run separate scenarios at the same time. Each UI scenario owns its driver and download directory. API responses are stored in the step-definition instance for the current scenario. Extent report updates are synchronized, and the shared logger adds run, scenario, or request identifiers to help follow events from parallel scenarios.
+
 To investigate a test in isolation from parallel work, run the suite with a single worker. To use four workers for the UI suite, use the second command.
 
 ```powershell
@@ -124,14 +198,9 @@ dotnet test Web_API_Automation.sln -- NUnit.NumberOfTestWorkers=1
 dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui" -- NUnit.NumberOfTestWorkers=4
 ```
 
-## Reports and CI
+## Continuous integration
 
-| Output | What you can find in it |
-| --- | --- |
-| `Automation Execution Results.html` | [ExtentReport.cs](AutomationReporting/ExtentReport.cs) creates the HTML report. Scenarios tagged `@ui` appear under **UI**, and scenarios tagged `@http` appear under **API**. Each entry shows its feature name and its steps, including their results, elapsed time, and matching definitions. UI steps embed a browser screenshot. A native dialog can block capture, so the report records its text and shows the most recent viewport when available. API steps show the request, response status, or values checked by the assertion. Expand the other details to view a data table, doc string, failure, or skip explanation. |
-| `automation.log` | [Logger.cs](AutomationReporting/Logger.cs) writes timestamped Serilog events for both suites. It records scenario and step results, WebDriver provisioning and session events, API outcomes, and retries. |
-| `*.png` | A screenshot saved when a UI scenario fails and the active browser supports capture. The test result also receives an attachment. |
-| `*.trx` | A test-runner results file generated when the TRX logger is selected. CI reads it to verify passing scenario counts and parallel execution. |
+### GitHub Actions workflows
 
 Both GitHub Actions workflows run on pull requests, pushes to `main`, and manual dispatch. Open a workflow run’s **Artifacts** section to download its reports.
 
@@ -141,10 +210,12 @@ Both GitHub Actions workflows run on pull requests, pushes to `main`, and manual
 | [api-ci.yml](.github/workflows/api-ci.yml) | Runs the six API scenarios, checks the HTML report and log, and publishes `restsharp-api`. |
 | [verify-parallel-results.py](.github/scripts/verify-parallel-results.py) | Reads scenario start and end times from a TRX file. It fails the job if too few scenarios passed or if fewer than two passing scenarios overlapped. |
 
+### Ignored generated files
+
 Git ignores generated reports, test results, `bin/`, `obj/`, generated `*.feature.cs` files, and Visual Studio’s `.vs/` folder. [.gitignore](.gitignore)
 
 ## Add a scenario
 
-1. Add a scenario to a `.feature` file under `AutomationTests/UI/Features` or `AutomationTests/API/Features`. Use `@ui` or `@http` for new features so they run in the correct suite.
+1. Add a scenario to a `.feature` file under `AutomationTests/UI/Features` or `AutomationTests/API/Features`. Use `@ui` or `@API` for new features so they run in the correct suite.
 2. Reuse matching step definitions where possible. For a new UI behavior, put page-specific locators and interactions in a page object and assertions in the step definitions. For API behavior, send the request with `ApiClient` and assert against the returned response in the steps.
 3. Run the relevant suite and inspect the HTML report. Update the corresponding workflow’s expected scenario count if the suite size changes.

@@ -24,7 +24,7 @@ jobs:
           dotnet-version: '8.0.x'
       - name: Run API scenarios
         id: api-scenarios
-        run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=http" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
+        run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=API" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
       - name: Verify API scenarios ran in parallel
         run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/api.trx" 6
       - name: Verify HTML report and automation log

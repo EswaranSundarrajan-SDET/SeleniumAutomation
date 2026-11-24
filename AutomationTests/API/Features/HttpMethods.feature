@@ -1,4 +1,4 @@
-@http
+@API
 Feature: HTTP methods
 
   Scenario: GET echoes a query parameter

@@ -12,7 +12,7 @@ namespace AutomationTests.API.StepDefinitions;
 [Binding]
 public sealed class HttpMethodSteps(ScenarioContext scenario)
 {
-    private static readonly ApiClient Echo = new(new Uri("https://httpbingo.org/"));
+    private static readonly ApiClient client = new(new Uri("https://httpbingo.org/"));
     private RestResponse response = null!;
 
     /// <summary>Sends an encoded query parameter through the RestSharp client and stores the response.</summary>
@@ -33,7 +33,7 @@ public sealed class HttpMethodSteps(ScenarioContext scenario)
     private async Task SendAsync(RestRequest request, string requestDetails)
     {
         TestHooks.RecordApiDetails(scenario, requestDetails);
-        response = await Echo.ExecuteAsync(request);
+        response = await client.ExecuteAsync(request);
         TestHooks.RecordApiDetails(scenario, $"{requestDetails}\nResponse: {(int)response.StatusCode} ({response.ResponseStatus})");
     }
 

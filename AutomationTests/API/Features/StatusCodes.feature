@@ -1,4 +1,4 @@
-@http
+@API
 Feature: HTTP status codes
   Scenario Outline: Receive the status code shown in the example
     When I request the status code example for <code>
