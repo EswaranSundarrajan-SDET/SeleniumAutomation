@@ -116,14 +116,14 @@ Each UI feature describes the behavior in Gherkin. Its **step definitions** run 
 
 | API feature | C# file | What the scenarios check |
 | --- | --- | --- |
-| [HttpMethods.feature](AutomationTests/API/Features/HttpMethods.feature) | [HttpMethodSteps.cs](AutomationTests/API/StepDefinitions/HttpMethodSteps.cs) | HTTPBingo echoes the GET method and query parameter, and echoes the method and JSON payload for POST, PUT, and PATCH. |
+| [HttpMethods.feature](AutomationTests/API/Features/HttpMethods.feature) | [APIHandlingSteps.cs](AutomationTests/API/StepDefinitions/APIHandlingSteps.cs) | HTTPBingo echoes the GET method and query parameter, and echoes the method and JSON payload for POST, PUT, and PATCH. |
 | [StatusCodes.feature](AutomationTests/API/Features/StatusCodes.feature) | [StatusCodeSteps.cs](AutomationTests/API/StepDefinitions/StatusCodeSteps.cs) | The Internet returns the requested example status code, either `200` or `404`. |
 
 ### Shared test files
 
 | Shared test file | Purpose |
 | --- | --- |
-| [TestSettings.cs](AutomationTests/Configuration/TestSettings.cs) | Holds the base URL for The Internet and reads the copied login test data. The HTTPBingo URL lives in `HttpMethodSteps.cs`. |
+| [TestSettings.cs](AutomationTests/Configuration/TestSettings.cs) | Holds the base URL for The Internet and reads the copied login test data. The HTTPBingo URL lives in `APIHandlingSteps.cs`. |
 | [testdata.json](AutomationTests/UI/TestData/testdata.json) | Supplies the public demo account and the intentionally incorrect password for the login scenarios. |
 | [upload-example.txt](AutomationTests/UI/TestData/upload-example.txt) | Supplies the sample file for the upload scenario to submit and verify. |
 | [TestHooks.cs](AutomationTests/Hooks/TestHooks.cs) | Connects reporting, logging, browser setup, step timing, screenshots, and cleanup to the Reqnroll test lifecycle. |

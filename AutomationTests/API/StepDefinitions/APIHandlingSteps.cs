@@ -10,7 +10,7 @@ namespace AutomationTests.API.StepDefinitions;
 
 /// <summary>Exercises the HTTPBingo echo endpoints and keeps the response scoped to the scenario.</summary>
 [Binding]
-public sealed class HttpMethodSteps(ScenarioContext scenario)
+public sealed class APIHandlingSteps(ScenarioContext scenario)
 {
     private static readonly ApiClient client = new(new Uri("https://httpbingo.org/"));
     private RestResponse response = null!;
