@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using AutomationReporting;
 using AventStack.ExtentReports;
 using NUnit.Framework;
+using OpenQA.Selenium;
 using Reqnroll;
 using Reqnroll.Events;
 using Serilog;
@@ -17,12 +19,26 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
 {
     private const string ReportEntryKey = nameof(TestHooks) + ".ReportEntry";
     private const string StepStartedKey = nameof(TestHooks) + ".StepStarted";
+    private const string ApiDetailsKey = nameof(TestHooks) + ".ApiDetails";
     private static readonly ConditionalWeakTable<ITestThreadExecutionEventPublisher, object> StepSubscriptions = new();
-    private static readonly Lazy<string> ReportDirectory = new(() => Path.GetFullPath(
-        Environment.GetEnvironmentVariable("REPORTS_DIR") ??
-        Path.Combine(TestContext.CurrentContext.TestDirectory, "..", "..", "..", "Reports")));
+    private static readonly Lazy<string> ReportDirectory = new(ResolveReportDirectory);
     private static readonly Lazy<ExtentReport> Report = new(() => new ExtentReport(ReportDirectory.Value));
     private ScenarioReport? result;
+
+    private static string ResolveReportDirectory()
+    {
+        var configuredDirectory = Environment.GetEnvironmentVariable("REPORTS_DIR");
+        if (!string.IsNullOrWhiteSpace(configuredDirectory))
+            return Path.GetFullPath(configuredDirectory);
+
+        var projectDirectory = typeof(TestHooks).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
+            .FirstOrDefault(attribute => attribute.Key == "AutomationTestsProjectDirectory")?.Value;
+        var parentDirectory = projectDirectory != null && Directory.Exists(projectDirectory)
+            ? projectDirectory
+            : TestContext.CurrentContext.TestDirectory;
+
+        return Path.Combine(parentDirectory, "Reports");
+    }
 
     /// <summary>Starts the shared logger before any scenario executes.</summary>
     [BeforeTestRun]
@@ -32,7 +48,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         Logger.ForContext<TestHooks>().Information("Automation run started");
     }
 
-    /// <summary>Starts a report entry before browser setup and includes scenario-outline arguments in its name.</summary>
+    /// <summary>Starts a categorized report entry before browser setup and includes scenario-outline arguments.</summary>
     [BeforeScenario(Order = 0)]
     public void StartReport()
     {
@@ -43,10 +59,20 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
             .ForContext("ScenarioId", Guid.NewGuid())
             .ForContext("Feature", feature.FeatureInfo.Title)
             .ForContext("Scenario", scenario.ScenarioInfo.Title);
-        result = new ScenarioReport(Report.Value.StartScenario(feature.FeatureInfo.Title, name), logger);
+        var category = GetReportCategory(scenario.ScenarioInfo.CombinedTags);
+        result = new ScenarioReport(Report.Value.StartScenario(feature.FeatureInfo.Title, name, category), logger,
+            category == "UI" ? session : null);
         scenario.Set(result, ReportEntryKey);
         logger.Information("Scenario started");
         SubscribeToStepResults();
+    }
+
+    private static string? GetReportCategory(string[] tags)
+    {
+        if (tags.Contains("ui", StringComparer.OrdinalIgnoreCase))
+            return "UI";
+
+        return tags.Contains("http", StringComparer.OrdinalIgnoreCase) ? "API" : null;
     }
 
     /// <summary>Starts the browser for UI scenarios and enables downloads for scenarios tagged accordingly.</summary>
@@ -73,6 +99,9 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         if (started.StepContext is ScenarioStepContext step)
             step.Set(new StepStart(Stopwatch.GetTimestamp(), step.StepInfo.Table?.ToString()), StepStartedKey);
     }
+
+    internal static void RecordApiDetails(ScenarioContext context, string details) =>
+        context.StepContext.Set(details, ApiDetailsKey);
 
     /// <summary>Logs each completed step with its timing, binding, Gherkin arguments, and result.</summary>
     private static void RecordStep(StepFinishedEvent completed)
@@ -105,9 +134,14 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         var didNotRun = step.Status == ScenarioExecutionStatus.UndefinedStep
             || (step.Status == ScenarioExecutionStatus.Skipped && step.StepError == null);
         TimeSpan? duration = start != null && !didNotRun ? Stopwatch.GetElapsedTime(start.Timestamp) : null;
+        var (screenshot, screenshotNote) = CaptureStepScreenshot(entry);
+        var apiDetails = step is ScenarioStepContext apiStep && apiStep.TryGetValue<string>(ApiDetailsKey, out var details)
+            ? details
+            : null;
 
         Report.Value.LogStep(entry.Report, status, $"{keyword} {info.Text}", duration,
-            info.BindingMatch?.StepBinding?.Method.ToString(), start?.DataTable, info.MultilineText, diagnostic);
+            info.BindingMatch?.StepBinding?.Method.ToString(), start?.DataTable, info.MultilineText, diagnostic,
+            screenshot?.AsBase64EncodedString, screenshotNote, apiDetails);
         entry.Logger.Write(status == Status.Fail ? LogEventLevel.Error : LogEventLevel.Information,
             "Step {Keyword} ended with {StepStatus}", keyword, step.Status);
     }
@@ -179,7 +213,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
     {
         try
         {
-            var screenshot = session.CaptureScreenshot();
+            var screenshot = session.CaptureScreenshot(out _);
             if (screenshot == null)
                 return;
 
@@ -196,6 +230,40 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         }
     }
 
-    private sealed record ScenarioReport(ExtentTest Report, ILogger Logger);
+    private static (Screenshot? Image, string? Note) CaptureStepScreenshot(ScenarioReport entry)
+    {
+        if (entry.BrowserSession == null)
+            return (null, null);
+
+        try
+        {
+            var screenshot = entry.BrowserSession.CaptureScreenshot(out var alertText);
+            if (screenshot != null)
+            {
+                entry.LastScreenshot = screenshot;
+                return (screenshot, null);
+            }
+
+            if (alertText == null)
+                return (null, "The browser was unavailable for this step.");
+
+            var note = $"Browser alert: {alertText}";
+            if (entry.LastScreenshot != null)
+                note += " (Viewport captured before the alert.)";
+
+            return (entry.LastScreenshot, note);
+        }
+        catch (Exception error)
+        {
+            entry.Logger.Warning("Step screenshot capture failed with {ErrorType} ({ErrorMessage})",
+                error.GetType().Name, error.Message);
+            return (null, "The browser could not capture a screenshot for this step.");
+        }
+    }
+
+    private sealed record ScenarioReport(ExtentTest Report, ILogger Logger, ScenarioSession? BrowserSession)
+    {
+        public Screenshot? LastScreenshot { get; set; }
+    }
     private sealed record StepStart(long Timestamp, string? DataTable);
 }

@@ -50,8 +50,24 @@ public sealed class ScenarioSession
         }
     }
 
-    /// <summary>Captures the active browser if screenshots are supported.</summary>
-    internal Screenshot? CaptureScreenshot() => (driver as ITakesScreenshot)?.GetScreenshot();
+    /// <summary>Captures the viewport or returns the text of an open browser alert.</summary>
+    internal Screenshot? CaptureScreenshot(out string? alertText)
+    {
+        alertText = null;
+        if (driver is not ITakesScreenshot camera)
+            return null;
+
+        try
+        {
+            // A screenshot command can dismiss a native alert that the next step needs to verify.
+            alertText = driver.SwitchTo().Alert().Text;
+            return null;
+        }
+        catch (NoAlertPresentException)
+        {
+            return camera.GetScreenshot();
+        }
+    }
 
     /// <summary>Disposes the active driver and deletes temporary downloads even if driver disposal fails.</summary>
     internal void StopBrowser()

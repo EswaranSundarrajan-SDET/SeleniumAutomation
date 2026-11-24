@@ -41,7 +41,7 @@ jobs:
         run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 25
       - name: Verify HTML report and automation log
         if: ${{ !cancelled() && steps.scenarios.outcome != 'skipped' }}
-        run: test -s "$REPORTS_DIR/ExtentReport.html" && test -s "$REPORTS_DIR/automation.log"
+        run: test -s "$REPORTS_DIR/Automation Execution Results.html" && test -s "$REPORTS_DIR/automation.log"
       - name: Upload HTML, TRX, and failure screenshots
         if: always()
         uses: actions/upload-artifact@v4

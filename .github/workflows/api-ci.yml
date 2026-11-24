@@ -29,7 +29,7 @@ jobs:
         run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/api.trx" 6
       - name: Verify HTML report and automation log
         if: ${{ !cancelled() && steps.api-scenarios.outcome != 'skipped' }}
-        run: test -s "$REPORTS_DIR/ExtentReport.html" && test -s "$REPORTS_DIR/automation.log"
+        run: test -s "$REPORTS_DIR/Automation Execution Results.html" && test -s "$REPORTS_DIR/automation.log"
       - name: Upload API HTML and TRX
         if: always()
         uses: actions/upload-artifact@v4
