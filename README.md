@@ -1,4 +1,4 @@
-# Selenium Automation
+# Web_API_Automation
 
 The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, ExtentReports, and Serilog. Browser scenarios run against [The Internet](https://the-internet.herokuapp.com/). API scenarios use The Internet and [HTTPBingo](https://httpbingo.org/).
 
@@ -18,7 +18,7 @@ The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, ExtentR
 | `AutomationFramework` | Reusable Selenium class library with driver creation, browser configuration, waits, and UI helpers |
 | `AutomationTests` | UI and API scenarios under `UI/` and `API/`, with shared Reqnroll hooks in `Hooks/` |
 | `ApiAutomation` | RestSharp client library |
-| `AutomationReporting` | Extent HTML reporting and Serilog file configuration shared by the UI and API suites |
+| `AutomationReporting` | Extent HTML reporting and the shared `Logger` for UI and API events |
 
 `AutomationTests` references `AutomationFramework` for Selenium, `ApiAutomation` for RestSharp, and `AutomationReporting` for Extent HTML reporting.
 
@@ -27,7 +27,7 @@ The .NET 8 solution uses Selenium WebDriver, Reqnroll, NUnit, RestSharp, ExtentR
 Install the .NET 8 SDK. Run from the repository root.
 
 ```powershell
-dotnet test SeleniumAutomation.sln
+dotnet test Web_API_Automation.sln
 ```
 
 Run one suite with its NUnit category filter.
@@ -37,7 +37,7 @@ dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=http"
 dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui"
 ```
 
-Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` after the run. A full run includes both suites in the same report. Each BDD step includes its Gherkin keyword, resolved text, and status. The browser report embeds screenshots on failure. Serilog writes `automation.log` to the same directory, including scenario and step outcomes, WebDriver start and stop events, API response status and timing, and retries. Set `REPORTS_DIR` to choose the output directory. To watch the UI scenarios in Firefox, run these commands from the repository root.
+Chrome runs headless by default. Open `AutomationTests/Reports/ExtentReport.html` after the run. A full run includes both suites in the same report. Each BDD step shows its resolved Gherkin text, status, elapsed time when executed, and matching step definition when available. Expand a step's details to see its Gherkin data table or doc string, and any failure or skip explanation. The browser report embeds screenshots on failure. Serilog writes `automation.log` to the same directory, including scenario and step outcomes, WebDriver start and stop events, API response status and timing, and retries. Set `REPORTS_DIR` to choose the output directory. To watch the UI scenarios in Firefox, run these commands from the repository root.
 
 ```powershell
 $env:BROWSER = "firefox"
@@ -56,7 +56,7 @@ Use a worker override when running a suite from the command line. A single worke
 
 ```powershell
 dotnet test AutomationTests/AutomationTests.csproj --filter "TestCategory=ui" -- NUnit.NumberOfTestWorkers=4
-dotnet test SeleniumAutomation.sln -- NUnit.NumberOfTestWorkers=1
+dotnet test Web_API_Automation.sln -- NUnit.NumberOfTestWorkers=1
 ```
 
 GitHub Actions runs Chrome and Firefox in Selenium CI and the API tests in RestSharp API CI. Each job checks its scenario TRX timestamps for overlapping execution and publishes its own report.
@@ -69,10 +69,10 @@ UI features, steps, page objects, and input data live under `AutomationTests/UI`
 
 | Principle | Where it is used |
 | --- | --- |
-| Encapsulation | `LoginPage.SignIn` owns its selectors and interaction sequence. `WebDriverSession` owns the browser session and `ScenarioSession` owns temporary downloads. |
-| Abstraction | `PageObject` exposes shared navigation and UI helpers to derived pages. `IBrowserDriverProvider` defines the browser creation contract. |
+| Encapsulation | `LoginPage.SignIn` owns its selectors and interaction sequence. `ScenarioSession` owns the browser session and its temporary downloads. |
+| Abstraction | `PageObject` exposes shared navigation and UI helpers to derived pages. `DriverFactory` handles browser provisioning and driver creation. |
 | Inheritance | The login, dynamic loading, browser controls, and advanced controls page objects inherit common behavior from `PageObject`. |
-| Polymorphism | `DriverFactory` calls `IBrowserDriverProvider.Create` and selects the Chrome or Firefox implementation at runtime. The Selenium helpers operate on the returned `IWebDriver`. |
+| Polymorphism | The Selenium helpers use `IWebDriver` with either a Chrome or Firefox driver. |
 
 `ApiClient.ExecuteAsync` can take a configured RestSharp request or a resource and `HttpMethod`. The client supports GET, POST, PUT, and PATCH.
 

@@ -1,9 +1,9 @@
 using AutomationFramework.Utilities;
+using AutomationReporting;
 using OpenQA.Selenium;
 using OpenQA.Selenium.Support.UI;
 using Polly;
 using Polly.Retry;
-using Serilog;
 
 namespace AutomationFramework.UI;
 
@@ -21,7 +21,7 @@ public sealed class ElementActions(IWebDriver driver)
                 .Handle<ElementNotInteractableException>(),
             OnRetry = args =>
             {
-                Log.ForContext<ElementActions>().Warning("Retrying Selenium element action (retry {Attempt}) after {ErrorType}",
+                Logger.ForContext<ElementActions>().Warning("Retrying Selenium element action (retry {Attempt}) after {ErrorType}",
                     args.AttemptNumber + 1, args.Outcome.Exception?.GetType().Name);
                 return default;
             }

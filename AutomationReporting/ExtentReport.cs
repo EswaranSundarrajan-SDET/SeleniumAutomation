@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Net;
+using System.Text;
 using AventStack.ExtentReports;
 using AventStack.ExtentReports.Reporter;
 
@@ -30,6 +32,37 @@ public sealed class ExtentReport
     {
         lock (reportLock)
             scenario.Log(status, WebUtility.HtmlEncode(message));
+    }
+
+    /// <summary>Writes a BDD step with its timing, binding, and expandable details.</summary>
+    public void LogStep(ExtentTest scenario, Status status, string step, TimeSpan? duration, string? binding,
+        string? dataTable, string? docString, string? diagnostic)
+    {
+        var html = new StringBuilder("<strong>").Append(WebUtility.HtmlEncode(step)).Append("</strong>");
+        if (duration is TimeSpan elapsed)
+        {
+            html.Append("<div class='small'>Duration: ")
+                .Append(elapsed.TotalMilliseconds.ToString("0.##", CultureInfo.InvariantCulture))
+                .Append(" ms</div>");
+        }
+        if (binding != null)
+            html.Append("<div class='small'>Step definition: ").Append(WebUtility.HtmlEncode(binding)).Append("</div>");
+
+        AppendStepDetail(html, "Data table", dataTable);
+        AppendStepDetail(html, "Doc string", docString);
+        AppendStepDetail(html, "Result details", diagnostic);
+
+        lock (reportLock)
+            scenario.Log(status, html.ToString());
+    }
+
+    private static void AppendStepDetail(StringBuilder html, string label, string? content)
+    {
+        if (content != null)
+        {
+            html.Append("<details class='mt-1'><summary>").Append(label).Append("</summary><pre class='mb-1'>")
+                .Append(WebUtility.HtmlEncode(content)).Append("</pre></details>");
+        }
     }
 
     /// <summary>Embeds a Base64-encoded failure screenshot in the scenario entry.</summary>

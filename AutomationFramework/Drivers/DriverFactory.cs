@@ -1,13 +1,15 @@
 using AutomationFramework.Utilities;
+using AutomationReporting;
 using OpenQA.Selenium;
-using Serilog;
+using OpenQA.Selenium.Chrome;
+using OpenQA.Selenium.Firefox;
 using WebDriverManager.DriverConfigs;
 using WebDriverManager.DriverConfigs.Impl;
 using DriverPackageManager = WebDriverManager.DriverManager;
 
 namespace AutomationFramework.Drivers;
 
-/// <summary>Selects the configured provider for each new Selenium browser session.</summary>
+/// <summary>Provisions managed browsers and creates Selenium driver sessions.</summary>
 public static class DriverFactory
 {
     private static readonly object ProvisionLock = new();
@@ -17,17 +19,46 @@ public static class DriverFactory
     public static IWebDriver Create(string? downloadDirectory = null) =>
         Create(ConfigHelper.Browser, ConfigHelper.Headless, downloadDirectory);
 
-    internal static IWebDriver Create(string browser, bool headless, string? downloadDirectory)
+    /// <summary>Creates a Chrome or Firefox session with the supplied settings.</summary>
+    public static WebDriver Create(string browser, bool headless, string? downloadDirectory) => browser switch
     {
-        (IBrowserDriverProvider Provider, IDriverConfig DriverConfig) setup = browser switch
-        {
-            "chrome" => (new ChromeDriverProvider(), new ChromeConfig()),
-            "firefox" => (new FirefoxDriverProvider(), new FirefoxConfig()),
-            _ => throw new ArgumentException($"Unsupported browser: {browser}")
-        };
+        "chrome" => CreateChrome(ResolveLatestStable(browser, new ChromeConfig()), headless, downloadDirectory),
+        "firefox" => CreateFirefox(ResolveLatestStable(browser, new FirefoxConfig()), headless, downloadDirectory),
+        _ => throw new ArgumentException($"Unsupported browser: {browser}")
+    };
 
-        var binaries = ResolveLatestStable(browser, setup.DriverConfig);
-        return setup.Provider.Create(headless, downloadDirectory, binaries);
+    private static ChromeDriver CreateChrome(BrowserBinaries binaries, bool headless, string? downloadDirectory)
+    {
+        var options = new ChromeOptions { BinaryLocation = binaries.BrowserPath };
+        if (headless)
+            options.AddArgument("--headless=new");
+        options.AddArgument("--window-size=1440,1000");
+        if (downloadDirectory != null)
+        {
+            options.AddUserProfilePreference("download.default_directory", Path.GetFullPath(downloadDirectory));
+            options.AddUserProfilePreference("download.prompt_for_download", false);
+        }
+
+        var service = ChromeDriverService.CreateDefaultService(Path.GetDirectoryName(binaries.DriverPath),
+            Path.GetFileName(binaries.DriverPath));
+        return new ChromeDriver(service, options);
+    }
+
+    private static FirefoxDriver CreateFirefox(BrowserBinaries binaries, bool headless, string? downloadDirectory)
+    {
+        var options = new FirefoxOptions { BinaryLocation = binaries.BrowserPath };
+        if (headless)
+            options.AddArgument("-headless");
+        if (downloadDirectory != null)
+        {
+            options.SetPreference("browser.download.folderList", 2);
+            options.SetPreference("browser.download.dir", Path.GetFullPath(downloadDirectory));
+            options.SetPreference("browser.helperApps.neverAsk.saveToDisk", "text/plain,text/csv,application/octet-stream");
+        }
+
+        var service = FirefoxDriverService.CreateDefaultService(Path.GetDirectoryName(binaries.DriverPath),
+            Path.GetFileName(binaries.DriverPath));
+        return new FirefoxDriver(service, options);
     }
 
     private static BrowserBinaries ResolveLatestStable(string browser, IDriverConfig driverConfig)
@@ -37,7 +68,7 @@ public static class DriverFactory
             if (Provisioned.TryGetValue(browser, out var binaries))
                 return binaries;
 
-            var log = Log.ForContext(typeof(DriverFactory)).ForContext("Browser", browser);
+            var log = Logger.ForContext(typeof(DriverFactory)).ForContext("Browser", browser);
             log.Information("Checking for the latest stable browser and matching WebDriver");
             var paths = SeleniumManager.BinaryPaths($"--browser {browser} --browser-version stable " +
                 "--force-browser-download --skip-browser-in-path --skip-driver-in-path --ttl 0");
@@ -61,6 +92,6 @@ public static class DriverFactory
             return binaries;
         }
     }
-}
 
-internal sealed record BrowserBinaries(string BrowserPath, string DriverPath);
+    private sealed record BrowserBinaries(string BrowserPath, string DriverPath);
+}

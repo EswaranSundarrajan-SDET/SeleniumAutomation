@@ -23,7 +23,7 @@ jobs:
       BROWSER: ${{ matrix.browser }}
       HEADLESS: 'true'
       REPORTS_DIR: ${{ github.workspace }}/AutomationTests/Reports/${{ matrix.browser }}
-      SOLUTION: SeleniumAutomation.sln
+      SOLUTION: Web_API_Automation.sln
       TEST_PROJECT: AutomationTests/AutomationTests.csproj
     steps:
       - uses: actions/checkout@v4

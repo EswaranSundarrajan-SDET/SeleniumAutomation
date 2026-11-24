@@ -1,11 +1,10 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using AutomationReporting;
 using Polly;
 using Polly.Retry;
 using RestSharp;
-using Serilog;
-using Serilog.Context;
 using Serilog.Events;
 
 namespace ApiAutomation.Clients;
@@ -27,7 +26,7 @@ public sealed class ApiClient : IDisposable
             OnRetry = args =>
             {
                 var response = args.Outcome.Result!;
-                Log.ForContext<ApiClient>().Warning(
+                Logger.ForContext<ApiClient>().Warning(
                     "Retrying API request ({Attempt}/{MaxRetries}) for {Method} after {StatusCode} ({ResponseStatus})",
                     args.AttemptNumber + 1, MaxRetries, response.Request?.Method, (int)response.StatusCode,
                     response.ResponseStatus);
@@ -95,7 +94,7 @@ public sealed class ApiClient : IDisposable
 
     private async Task<RestResponse> SendAsync(RestRequest request, CancellationToken cancellationToken)
     {
-        using var requestScope = LogContext.PushProperty("RequestId", Guid.NewGuid());
+        using var requestScope = Logger.PushProperty("RequestId", Guid.NewGuid());
         var started = Stopwatch.GetTimestamp();
         var allowRetry = request.Method is (Method.Get or Method.Put) && request.Files.Count == 0;
         var response = allowRetry
@@ -105,7 +104,7 @@ public sealed class ApiClient : IDisposable
 
         var status = (int)response.StatusCode;
         var level = status == 0 || status >= 500 ? LogEventLevel.Warning : LogEventLevel.Information;
-        Log.ForContext<ApiClient>().Write(level, "API {Method} returned {StatusCode} ({ResponseStatus}) in {ElapsedMs} ms",
+        Logger.ForContext<ApiClient>().Write(level, "API {Method} returned {StatusCode} ({ResponseStatus}) in {ElapsedMs} ms",
             request.Method, status, response.ResponseStatus, Stopwatch.GetElapsedTime(started).TotalMilliseconds);
         return response;
     }

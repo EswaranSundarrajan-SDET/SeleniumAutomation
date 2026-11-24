@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using AutomationReporting;
 using AventStack.ExtentReports;
@@ -15,6 +16,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
     ITestThreadExecutionEventPublisher executionEvents)
 {
     private const string ReportEntryKey = nameof(TestHooks) + ".ReportEntry";
+    private const string StepStartedKey = nameof(TestHooks) + ".StepStarted";
     private static readonly ConditionalWeakTable<ITestThreadExecutionEventPublisher, object> StepSubscriptions = new();
     private static readonly Lazy<string> ReportDirectory = new(() => Path.GetFullPath(
         Environment.GetEnvironmentVariable("REPORTS_DIR") ??
@@ -26,8 +28,8 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
     [BeforeTestRun]
     public static void StartLogging()
     {
-        AutomationLogger.Start(ReportDirectory.Value);
-        Log.Information("Automation run started");
+        Logger.Start(ReportDirectory.Value);
+        Logger.ForContext<TestHooks>().Information("Automation run started");
     }
 
     /// <summary>Starts a report entry before browser setup and includes scenario-outline arguments in its name.</summary>
@@ -37,7 +39,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         var arguments = scenario.ScenarioInfo.Arguments;
         var name = arguments == null || arguments.Count == 0 ? scenario.ScenarioInfo.Title :
             $"{scenario.ScenarioInfo.Title} ({string.Join(", ", arguments.Values.Cast<object>())})";
-        var logger = Log.ForContext<TestHooks>()
+        var logger = Logger.ForContext<TestHooks>()
             .ForContext("ScenarioId", Guid.NewGuid())
             .ForContext("Feature", feature.FeatureInfo.Title)
             .ForContext("Scenario", scenario.ScenarioInfo.Title);
@@ -51,7 +53,7 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
     [BeforeScenario("ui", Order = 10)]
     public void StartBrowser() => session.StartBrowser(scenario.ScenarioInfo.Tags.Contains("download"), result?.Logger);
 
-    /// <summary>Registers one shared step handler for each Reqnroll execution publisher.</summary>
+    /// <summary>Registers the shared step handlers once for each Reqnroll execution publisher.</summary>
     private void SubscribeToStepResults()
     {
         lock (StepSubscriptions)
@@ -60,12 +62,19 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
                 return;
 
             // Reqnroll publishes step results even when a failure prevents later step hooks from running.
+            executionEvents.AddHandler<StepStartedEvent>(RecordStepStart);
             executionEvents.AddHandler<StepFinishedEvent>(RecordStep);
             StepSubscriptions.Add(executionEvents, new object());
         }
     }
 
-    /// <summary>Logs each step's original keyword, expanded text, and execution status in its scenario entry.</summary>
+    private static void RecordStepStart(StepStartedEvent started)
+    {
+        if (started.StepContext is ScenarioStepContext step)
+            step.Set(new StepStart(Stopwatch.GetTimestamp(), step.StepInfo.Table?.ToString()), StepStartedKey);
+    }
+
+    /// <summary>Logs each completed step with its timing, binding, Gherkin arguments, and result.</summary>
     private static void RecordStep(StepFinishedEvent completed)
     {
         if (completed.ScenarioContext is not ScenarioContext context
@@ -82,15 +91,23 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
             _ => Status.Fail
         };
 
-        var detail = step.Status switch
+        var diagnostic = step.Status switch
         {
-            ScenarioExecutionStatus.StepDefinitionPending => "Pending",
-            ScenarioExecutionStatus.UndefinedStep => "Undefined step",
-            _ => step.StepError?.Message
+            ScenarioExecutionStatus.Skipped when step.StepError == null => "A previous step or hook did not complete successfully.",
+            ScenarioExecutionStatus.StepDefinitionPending when step.StepError == null => "The step definition is pending.",
+            ScenarioExecutionStatus.UndefinedStep => "No matching step definition was found.",
+            _ => step.StepError?.ToString()
         };
 
-        var message = $"{keyword} {info.Text}";
-        Report.Value.Log(entry.Report, status, detail == null ? message : $"{message} ({detail})");
+        var start = step is ScenarioStepContext stepContext && stepContext.TryGetValue<StepStart>(StepStartedKey, out var recorded)
+            ? recorded
+            : null;
+        var didNotRun = step.Status == ScenarioExecutionStatus.UndefinedStep
+            || (step.Status == ScenarioExecutionStatus.Skipped && step.StepError == null);
+        TimeSpan? duration = start != null && !didNotRun ? Stopwatch.GetElapsedTime(start.Timestamp) : null;
+
+        Report.Value.LogStep(entry.Report, status, $"{keyword} {info.Text}", duration,
+            info.BindingMatch?.StepBinding?.Method.ToString(), start?.DataTable, info.MultilineText, diagnostic);
         entry.Logger.Write(status == Status.Fail ? LogEventLevel.Error : LogEventLevel.Information,
             "Step {Keyword} ended with {StepStatus}", keyword, step.Status);
     }
@@ -152,8 +169,8 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         }
         finally
         {
-            Log.Information("Automation run finished");
-            Log.CloseAndFlush();
+            Logger.ForContext<TestHooks>().Information("Automation run finished");
+            Logger.CloseAndFlush();
         }
     }
 
@@ -174,10 +191,11 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         }
         catch (Exception error)
         {
-            entry.Logger.Warning("Screenshot failed ({ErrorType})", error.GetType().Name);
-            TestContext.Progress.WriteLine($"Screenshot failed: {error.Message}");
+            entry.Logger.Warning("Screenshot capture failed with {ErrorType} ({ErrorMessage})",
+                error.GetType().Name, error.Message);
         }
     }
 
     private sealed record ScenarioReport(ExtentTest Report, ILogger Logger);
+    private sealed record StepStart(long Timestamp, string? DataTable);
 }
