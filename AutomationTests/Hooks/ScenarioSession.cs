@@ -21,8 +21,8 @@ public sealed class ScenarioSession
     public string DownloadDirectory => downloads?.FullName
         ?? throw new InvalidOperationException("This scenario has no download directory.");
 
-    /// <summary>Starts the scenario's only browser and allocates a unique download directory when needed.</summary>
-    internal void StartBrowser(bool enableDownloads, ILogger? logger)
+    /// <summary>Starts an isolated browser with the settings requested by this scenario.</summary>
+    internal void StartBrowser(bool enableDownloads, bool blockGeolocation, ILogger? logger)
     {
         ObjectDisposedException.ThrowIf(stopped, this);
         if (driver != null || downloads != null)
@@ -37,7 +37,7 @@ public sealed class ScenarioSession
             if (enableDownloads)
                 downloads = Directory.CreateTempSubdirectory("selenium-download-");
 
-            var activeDriver = DriverFactory.Create(browser, headless, downloads?.FullName);
+            var activeDriver = DriverFactory.Create(browser, headless, downloads?.FullName, blockGeolocation);
             driver = activeDriver;
             browserLog = log.ForContext("WebDriverSessionId", activeDriver.SessionId.ToString())
                 .ForContext("BrowserVersion", activeDriver.Capabilities.GetCapability("browserVersion"));

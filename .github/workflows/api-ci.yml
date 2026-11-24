@@ -26,7 +26,7 @@ jobs:
         id: api-scenarios
         run: dotnet test "$TEST_PROJECT" -c Release --filter "TestCategory=API" --logger "trx;LogFileName=api.trx" --results-directory "$REPORTS_DIR"
       - name: Verify API scenarios ran in parallel
-        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/api.trx" 6
+        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/api.trx" 21
       - name: Verify HTML report and automation log
         if: ${{ !cancelled() && steps.api-scenarios.outcome != 'skipped' }}
         run: test -s "$REPORTS_DIR/Automation Execution Results.html" && test -s "$REPORTS_DIR/automation.log"

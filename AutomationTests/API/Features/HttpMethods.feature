@@ -1,15 +1,15 @@
 @API
-Feature: HTTP methods
+Feature: HTTP methods with HTTPBingo
 
-  Scenario: GET echoes a query parameter
-    When I send GET to the echo service with query "selenium automation"
-    Then the response echoes method "GET"
-    And the response echoes query "selenium automation"
+  Scenario: HTTPBingo returns the GET method and query value
+    When I send GET to HTTPBingo with query "selenium automation"
+    Then the HTTPBingo response contains method "GET"
+    And the HTTPBingo response contains query "selenium automation"
 
-  Scenario Outline: Write methods echo a JSON payload
-    When I send <method> to the echo service with a JSON name of "Selenium sample"
-    Then the response echoes method "<method>"
-    And the response echoes JSON name "Selenium sample"
+  Scenario Outline: HTTPBingo returns the method and JSON for write requests
+    When I send <method> to HTTPBingo with a JSON name of "Selenium sample"
+    Then the HTTPBingo response contains method "<method>"
+    And the HTTPBingo response contains JSON name "Selenium sample"
 
     Examples:
       | method |

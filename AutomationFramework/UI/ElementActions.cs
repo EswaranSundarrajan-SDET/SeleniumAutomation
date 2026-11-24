@@ -121,17 +121,8 @@ public sealed class ElementActions(IWebDriver driver)
 
     /// <summary>Polls for an element within the located shadow root and tolerates roots that reattach.</summary>
     /// <remarks>Use CSS selectors for elements inside the shadow root.</remarks>
-    public IWebElement FindInShadowRoot(By host, By locator)
-    {
-        var wait = WaitHelper.Create(driver);
-        wait.Message = $"Shadow element did not become available: {host} > {locator}";
-        wait.IgnoreExceptionTypes(typeof(NoSuchShadowRootException), typeof(DetachedShadowRootException));
-        return wait.Until(d =>
-        {
-            var root = d.FindElement(host).GetShadowRoot();
-            return root.FindElement(locator);
-        })!;
-    }
+    public IWebElement FindInShadowRoot(By host, By locator) =>
+        new AdvancedControl(driver).FindInShadowRoots(locator, host);
 
     /// <summary>Reads header and data cell text grouped by table row.</summary>
     public IReadOnlyList<IReadOnlyList<string>> ReadTable(By table) =>

@@ -8,7 +8,7 @@ using RestSharp;
 
 namespace AutomationTests.API.StepDefinitions;
 
-/// <summary>Exercises the HTTPBingo echo endpoints and keeps the response scoped to the scenario.</summary>
+/// <summary>Checks the request details returned by HTTPBingo and keeps the response scoped to the scenario.</summary>
 [Binding]
 public sealed class APIHandlingSteps(ScenarioContext scenario)
 {
@@ -16,13 +16,13 @@ public sealed class APIHandlingSteps(ScenarioContext scenario)
     private RestResponse response = null!;
 
     /// <summary>Sends an encoded query parameter through the RestSharp client and stores the response.</summary>
-    [When("I send GET to the echo service with query {string}")]
+    [When("I send GET to HTTPBingo with query {string}")]
     public Task SendGet(string query) => SendAsync(
         new RestRequest("get", Method.Get).AddQueryParameter("q", query),
         $"GET /get?q={Uri.EscapeDataString(query)}");
 
     /// <summary>Sends the supplied method with a JSON name value and stores its response.</summary>
-    [When("I send {word} to the echo service with a JSON name of {string}")]
+    [When("I send {word} to HTTPBingo with a JSON name of {string}")]
     public Task SendJson(string method, string name)
     {
         var payload = new { name };
@@ -37,41 +37,41 @@ public sealed class APIHandlingSteps(ScenarioContext scenario)
         TestHooks.RecordApiDetails(scenario, $"{requestDetails}\nResponse: {(int)response.StatusCode} ({response.ResponseStatus})");
     }
 
-    /// <summary>Verifies the echo service received the expected HTTP method.</summary>
-    [Then("the response echoes method {string}")]
+    /// <summary>Verifies HTTPBingo received the expected HTTP method.</summary>
+    [Then("the HTTPBingo response contains method {string}")]
     public void CheckMethod(string method)
     {
-        using var json = ReadEcho();
-        CheckEchoedValue("Method", json.RootElement.GetProperty("method").GetString(), method);
+        using var json = ReadResponseJson();
+        CheckResponseValue("Method", json.RootElement.GetProperty("method").GetString(), method);
     }
 
-    /// <summary>Verifies the first echoed query value matches the scenario input.</summary>
-    [Then("the response echoes query {string}")]
+    /// <summary>Verifies the first returned query value matches the scenario input.</summary>
+    [Then("the HTTPBingo response contains query {string}")]
     public void CheckQuery(string query)
     {
-        using var json = ReadEcho();
-        CheckEchoedValue("Query parameter q", json.RootElement.GetProperty("args").GetProperty("q")[0].GetString(), query);
+        using var json = ReadResponseJson();
+        CheckResponseValue("Query parameter q", json.RootElement.GetProperty("args").GetProperty("q")[0].GetString(), query);
     }
 
-    /// <summary>Verifies the echoed JSON name matches the submitted value.</summary>
-    [Then("the response echoes JSON name {string}")]
+    /// <summary>Verifies the returned JSON name matches the submitted value.</summary>
+    [Then("the HTTPBingo response contains JSON name {string}")]
     public void CheckJson(string name)
     {
-        using var json = ReadEcho();
-        CheckEchoedValue("JSON name", json.RootElement.GetProperty("json").GetProperty("name").GetString(), name);
+        using var json = ReadResponseJson();
+        CheckResponseValue("JSON name", json.RootElement.GetProperty("json").GetProperty("name").GetString(), name);
     }
 
-    private void CheckEchoedValue(string field, string? actual, string expected)
+    private void CheckResponseValue(string field, string? actual, string expected)
     {
         TestHooks.RecordApiDetails(scenario, $"{field}\nExpected: {expected}\nReceived: {actual ?? "null"}");
         Assert.That(actual, Is.EqualTo(expected));
     }
 
-    /// <summary>Checks for HTTP 200 before parsing an echo response.</summary>
+    /// <summary>Checks for HTTP 200 before parsing the HTTPBingo response.</summary>
     private void CheckSuccess() => Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK), response.ErrorMessage);
 
     /// <summary>Checks the status, parses the response body, and returns a document for the caller to dispose.</summary>
-    private JsonDocument ReadEcho()
+    private JsonDocument ReadResponseJson()
     {
         CheckSuccess();
         return JsonDocument.Parse(response.Content ?? throw new InvalidDataException("The response body was empty."));

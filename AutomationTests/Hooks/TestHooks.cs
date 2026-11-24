@@ -75,9 +75,13 @@ public class TestHooks(ScenarioSession session, ScenarioContext scenario, Featur
         return tags.Contains("API", StringComparer.OrdinalIgnoreCase) ? "API" : null;
     }
 
-    /// <summary>Starts the browser for UI scenarios and enables downloads for scenarios tagged accordingly.</summary>
+    /// <summary>Starts the browser with the download and permission settings requested by the scenario.</summary>
     [BeforeScenario("ui", Order = 10)]
-    public void StartBrowser() => session.StartBrowser(scenario.ScenarioInfo.Tags.Contains("download"), result?.Logger);
+    public void StartBrowser()
+    {
+        var tags = scenario.ScenarioInfo.Tags;
+        session.StartBrowser(tags.Contains("download"), tags.Contains("block-geolocation"), result?.Logger);
+    }
 
     /// <summary>Registers the shared step handlers once for each Reqnroll execution publisher.</summary>
     private void SubscribeToStepResults()

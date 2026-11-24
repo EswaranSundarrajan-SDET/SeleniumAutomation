@@ -13,6 +13,7 @@
     <PackageReference Include="NUnit" Version="4.3.2" />
     <PackageReference Include="NUnit3TestAdapter" Version="5.0.0" />
     <PackageReference Include="Reqnroll.NUnit" Version="3.3.3" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
     <ProjectReference Include="../ApiAutomation/ApiAutomation.csproj" />
     <ProjectReference Include="../AutomationFramework/AutomationFramework.csproj" />
     <ProjectReference Include="../AutomationReporting/AutomationReporting.csproj" />

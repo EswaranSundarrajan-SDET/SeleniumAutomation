@@ -38,7 +38,7 @@ jobs:
         id: scenarios
         run: dotnet test "$TEST_PROJECT" -c Release --no-build --filter "TestCategory=ui" --logger "trx;LogFileName=selenium.trx" --results-directory "$REPORTS_DIR"
       - name: Verify scenarios ran in parallel
-        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 25
+        run: python3 .github/scripts/verify-parallel-results.py "$REPORTS_DIR/selenium.trx" 33
       - name: Verify HTML report and automation log
         if: ${{ !cancelled() && steps.scenarios.outcome != 'skipped' }}
         run: test -s "$REPORTS_DIR/Automation Execution Results.html" && test -s "$REPORTS_DIR/automation.log"

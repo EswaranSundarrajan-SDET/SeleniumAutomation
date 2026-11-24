@@ -1,6 +1,6 @@
 $reportsDirectory = $env:REPORTS_DIR
 if ([string]::IsNullOrWhiteSpace($reportsDirectory)) {
-    $reportsDirectory = Join-Path -Path $PSScriptRoot -ChildPath 'AutomationTests/Reports'
+    $reportsDirectory = Join-Path -Path $PSScriptRoot -ChildPath 'Reports'
 }
 
 $reportPath = Join-Path -Path $reportsDirectory -ChildPath 'Automation Execution Results.html'

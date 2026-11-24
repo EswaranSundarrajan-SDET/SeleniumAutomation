@@ -69,26 +69,6 @@ public sealed class ApiClient : IDisposable
         return SendAsync(request, cancellationToken);
     }
 
-    /// <summary>Executes a resource with a supported HTTP method using the same retry policy.</summary>
-    public Task<RestResponse> ExecuteAsync(
-        string resource,
-        HttpMethod method,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(method);
-
-        var supportedMethod = method.Method switch
-        {
-            "GET" => Method.Get,
-            "POST" => Method.Post,
-            "PUT" => Method.Put,
-            "PATCH" => Method.Patch,
-            _ => throw new NotSupportedException($"HTTP method {method} is not supported.")
-        };
-
-        return ExecuteAsync(new RestRequest(resource, supportedMethod), cancellationToken);
-    }
-
     /// <summary>Disposes the underlying RestSharp client and its HTTP resources.</summary>
     public void Dispose() => client.Dispose();
 

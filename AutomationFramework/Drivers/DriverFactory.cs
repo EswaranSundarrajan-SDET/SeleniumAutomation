@@ -12,6 +12,7 @@ namespace AutomationFramework.Drivers;
 /// <summary>Provisions managed browsers and creates Selenium driver sessions.</summary>
 public static class DriverFactory
 {
+    private const int BlockPermission = 2;
     private static readonly object ProvisionLock = new();
     private static readonly Dictionary<string, BrowserBinaries> Provisioned = new();
 
@@ -20,19 +21,29 @@ public static class DriverFactory
         Create(ConfigHelper.Browser, ConfigHelper.Headless, downloadDirectory);
 
     /// <summary>Creates a Chrome or Firefox session with the supplied settings.</summary>
-    public static WebDriver Create(string browser, bool headless, string? downloadDirectory) => browser switch
+    public static WebDriver Create(string browser, bool headless, string? downloadDirectory) =>
+        Create(browser, headless, downloadDirectory, blockGeolocation: false);
+
+    /// <summary>Creates a browser session with optional geolocation blocking in its test profile.</summary>
+    public static WebDriver Create(string browser, bool headless, string? downloadDirectory, bool blockGeolocation) => browser switch
     {
-        "chrome" => CreateChrome(ResolveLatestStable(browser, new ChromeConfig()), headless, downloadDirectory),
-        "firefox" => CreateFirefox(ResolveLatestStable(browser, new FirefoxConfig()), headless, downloadDirectory),
+        "chrome" => CreateChrome(ResolveLatestStable(browser, new ChromeConfig()), headless, downloadDirectory, blockGeolocation),
+        "firefox" => CreateFirefox(ResolveLatestStable(browser, new FirefoxConfig()), headless, downloadDirectory, blockGeolocation),
         _ => throw new ArgumentException($"Unsupported browser: {browser}")
     };
 
-    private static ChromeDriver CreateChrome(BrowserBinaries binaries, bool headless, string? downloadDirectory)
+    private static ChromeDriver CreateChrome(BrowserBinaries binaries, bool headless, string? downloadDirectory, bool blockGeolocation)
     {
         var options = new ChromeOptions { BinaryLocation = binaries.BrowserPath };
         if (headless)
             options.AddArgument("--headless=new");
         options.AddArgument("--window-size=1440,1000");
+        // Chrome's password prompts can interrupt demo logins in its temporary test profile.
+        options.AddUserProfilePreference("credentials_enable_service", false);
+        options.AddUserProfilePreference("profile.password_manager_enabled", false);
+        options.AddUserProfilePreference("profile.password_manager_leak_detection", false);
+        if (blockGeolocation)
+            options.AddUserProfilePreference("profile.default_content_setting_values.geolocation", BlockPermission);
         if (downloadDirectory != null)
         {
             options.AddUserProfilePreference("download.default_directory", Path.GetFullPath(downloadDirectory));
@@ -44,11 +55,13 @@ public static class DriverFactory
         return new ChromeDriver(service, options);
     }
 
-    private static FirefoxDriver CreateFirefox(BrowserBinaries binaries, bool headless, string? downloadDirectory)
+    private static FirefoxDriver CreateFirefox(BrowserBinaries binaries, bool headless, string? downloadDirectory, bool blockGeolocation)
     {
         var options = new FirefoxOptions { BinaryLocation = binaries.BrowserPath };
         if (headless)
             options.AddArgument("-headless");
+        if (blockGeolocation)
+            options.SetPreference("permissions.default.geo", BlockPermission);
         if (downloadDirectory != null)
         {
             options.SetPreference("browser.download.folderList", 2);
